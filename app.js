@@ -75,18 +75,35 @@ function parseCSV(text) {
         throw new Error('CSV file is empty or has no data rows');
     }
 
-    const headers = parseCSVLine(lines[0]);
+    // Find the header row (contains "Account Name")
+    let headerLineIndex = -1;
+    for (let i = 0; i < Math.min(lines.length, 20); i++) {
+        if (lines[i].includes('Account Name')) {
+            headerLineIndex = i;
+            break;
+        }
+    }
+
+    if (headerLineIndex === -1) {
+        throw new Error('Could not find header row with "Account Name"');
+    }
+
+    const headers = parseCSVLine(lines[headerLineIndex]);
     const data = [];
 
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = headerLineIndex + 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i]);
-        if (values.length === 0) continue;
+        if (values.length === 0 || values.every(v => !v.trim())) continue;
 
         const row = {};
         headers.forEach((header, index) => {
             row[header] = values[index] || '';
         });
-        data.push(row);
+
+        // Only add rows that have some data
+        if (Object.values(row).some(v => v.trim() !== '')) {
+            data.push(row);
+        }
     }
 
     return data;
@@ -124,20 +141,66 @@ function parseCSVLine(line) {
 function parseXLSX(arrayBuffer) {
     const workbook = XLSX.read(arrayBuffer, { type: 'array' });
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_json(firstSheet);
+
+    // Convert to array of arrays to find header row
+    const rawData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+
+    // Find the header row (contains "Account Name")
+    let headerRowIndex = -1;
+    for (let i = 0; i < Math.min(rawData.length, 20); i++) {
+        const row = rawData[i];
+        if (row && row.some(cell => String(cell).includes('Account Name'))) {
+            headerRowIndex = i;
+            break;
+        }
+    }
+
+    if (headerRowIndex === -1) {
+        throw new Error('Could not find header row with "Account Name"');
+    }
+
+    // Get headers and clean them
+    const headers = rawData[headerRowIndex].map(h => String(h).trim());
+
+    // Parse data rows
+    const data = [];
+    for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row || row.every(cell => !cell)) continue; // Skip empty rows
+
+        const obj = {};
+        headers.forEach((header, index) => {
+            if (header) {
+                obj[header] = row[index] !== undefined ? row[index] : '';
+            }
+        });
+
+        // Only add rows that have some data
+        if (Object.values(obj).some(v => v !== '')) {
+            data.push(obj);
+        }
+    }
+
+    return data;
 }
 
 // Process and clean data
 function processData(data) {
     rawData = data;
 
+    if (data.length === 0) {
+        showError('No data found in file');
+        return;
+    }
+
     // Validate required columns
     const requiredColumns = ['Account Name', 'Date', 'Transaction Type', 'Counterparty', 'Net (GBP)'];
     const firstRow = data[0] || {};
+    const availableColumns = Object.keys(firstRow);
     const missingColumns = requiredColumns.filter(col => !(col in firstRow));
 
     if (missingColumns.length > 0) {
-        showError(`Missing required columns: ${missingColumns.join(', ')}`);
+        showError(`Missing required columns: ${missingColumns.join(', ')}<br>Available columns: ${availableColumns.slice(0, 10).join(', ')}${availableColumns.length > 10 ? '...' : ''}`);
         return;
     }
 
@@ -215,9 +278,18 @@ function parseNetGBP(value) {
     return isNegative ? -num : num;
 }
 
-// Parse Date - handle formats like "17 Oct 25"
+// Parse Date - handle formats like "17 Oct 25" and Excel serial dates
 function parseDate(value) {
     if (!value) return null;
+
+    // If it's a number (Excel serial date), convert it
+    if (typeof value === 'number') {
+        // Excel dates are days since 1900-01-01 (with a bug for 1900 leap year)
+        const date = new Date((value - 25569) * 86400 * 1000);
+        if (!isNaN(date.getTime())) {
+            return date;
+        }
+    }
 
     const str = String(value).trim();
 
@@ -294,7 +366,7 @@ function showFileSummary() {
 
 // Show error message
 function showError(message) {
-    errorMessage.textContent = message;
+    errorMessage.innerHTML = message;
     errorMessage.classList.remove('hidden');
     fileSummary.classList.add('hidden');
     navigation.classList.add('hidden');
