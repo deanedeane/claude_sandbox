@@ -1,0 +1,351 @@
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    padding: 30px;
+}
+
+/* Header */
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid #667eea;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 1rem;
+}
+
+/* Upload Section */
+.upload-section {
+    margin-bottom: 30px;
+}
+
+.upload-container {
+    text-align: center;
+    padding: 20px;
+    border: 2px dashed #667eea;
+    border-radius: 8px;
+    background: #f8f9ff;
+    transition: all 0.3s ease;
+}
+
+.upload-container:hover {
+    background: #eef1ff;
+    border-color: #764ba2;
+}
+
+.upload-label {
+    display: block;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #667eea;
+    font-weight: 600;
+}
+
+#fileInput {
+    margin-top: 15px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.file-summary {
+    margin-top: 15px;
+    padding: 15px;
+    background: #e8f5e9;
+    border-left: 4px solid #4caf50;
+    border-radius: 4px;
+}
+
+.error-message {
+    margin-top: 15px;
+    padding: 15px;
+    background: #ffebee;
+    border-left: 4px solid #f44336;
+    border-radius: 4px;
+    color: #c62828;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Navigation */
+.navigation {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 0;
+}
+
+.nav-btn {
+    padding: 12px 24px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+    color: #667eea;
+    background: #f8f9ff;
+}
+
+.nav-btn.active {
+    color: #667eea;
+    border-bottom-color: #667eea;
+}
+
+/* Section Header */
+.section-header {
+    margin-bottom: 25px;
+}
+
+.section-header h2 {
+    font-size: 1.8rem;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.section-description {
+    color: #666;
+    line-height: 1.6;
+}
+
+.month-info {
+    padding: 15px;
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    color: #e65100;
+}
+
+/* Table Container */
+.table-container {
+    margin-bottom: 30px;
+}
+
+.table-container h3 {
+    font-size: 1.3rem;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+thead th {
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+tbody tr {
+    border-bottom: 1px solid #e0e0e0;
+    transition: background 0.2s ease;
+}
+
+tbody tr:nth-child(even) {
+    background: #f9f9f9;
+}
+
+tbody tr:hover {
+    background: #f0f4ff;
+}
+
+tbody td {
+    padding: 12px 15px;
+    color: #333;
+}
+
+/* Right-align numeric columns */
+td.numeric,
+th.numeric {
+    text-align: right;
+}
+
+/* Supplier Drill Down */
+.drill-down {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+.control-group {
+    margin-bottom: 20px;
+}
+
+.control-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+#accountSelect {
+    width: 100%;
+    max-width: 500px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    background: white;
+}
+
+/* Info Messages */
+.info-message {
+    padding: 15px;
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    border-radius: 4px;
+    margin: 15px 0;
+    color: #1565c0;
+}
+
+.no-results {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+    font-style: italic;
+}
+
+/* Movement Type Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-new {
+    background: #c8e6c9;
+    color: #2e7d32;
+}
+
+.badge-disappeared {
+    background: #ffcdd2;
+    color: #c62828;
+}
+
+.badge-increased {
+    background: #fff9c4;
+    color: #f57f17;
+}
+
+.badge-decreased {
+    background: #bbdefb;
+    color: #1565c0;
+}
+
+.badge-changed {
+    background: #ffe0b2;
+    color: #e65100;
+}
+
+.badge-multiple {
+    background: #f3e5f5;
+    color: #6a1b9a;
+}
+
+/* Positive/Negative Numbers */
+.positive {
+    color: #2e7d32;
+}
+
+.negative {
+    color: #c62828;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+
+    header h1 {
+        font-size: 1.8rem;
+    }
+
+    table {
+        font-size: 0.9rem;
+    }
+
+    thead th,
+    tbody td {
+        padding: 10px 8px;
+    }
+
+    .navigation {
+        flex-direction: column;
+    }
+
+    .nav-btn {
+        width: 100%;
+    }
+}
+
+/* Account Summary Cells */
+.account-summary {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.account-item {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.account-item:last-child {
+    margin-bottom: 0;
+}

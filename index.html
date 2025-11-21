@@ -3,23 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Game</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Transactions Checker</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Pong Game</h1>
-        <div class="instructions">
-            <p>Use W/S keys to move left paddle | Arrow Up/Down for right paddle</p>
-            <p>First to 5 points wins!</p>
-        </div>
-        <canvas id="pongCanvas" width="800" height="600"></canvas>
-        <div class="score">
-            <div class="player1-score">Player 1: <span id="player1Score">0</span></div>
-            <div class="player2-score">Player 2: <span id="player2Score">0</span></div>
-        </div>
-        <button id="resetButton">Reset Game</button>
+        <!-- Header -->
+        <header>
+            <h1>Transactions Checker</h1>
+            <p class="subtitle">Client-side analysis of Translucent accounting exports</p>
+        </header>
+
+        <!-- File Upload Section -->
+        <section class="upload-section">
+            <div class="upload-container">
+                <label for="fileInput" class="upload-label">
+                    <span>Upload Transaction File (CSV or XLSX)</span>
+                </label>
+                <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" />
+            </div>
+            <div id="fileSummary" class="file-summary hidden"></div>
+            <div id="errorMessage" class="error-message hidden"></div>
+        </section>
+
+        <!-- Navigation -->
+        <nav id="navigation" class="navigation hidden">
+            <button id="btnFluxChecker" class="nav-btn active">FluxChecker</button>
+            <button id="btnTransactionChecker" class="nav-btn">TransactionChecker</button>
+        </nav>
+
+        <!-- FluxChecker Section -->
+        <section id="fluxCheckerSection" class="content-section hidden">
+            <div class="section-header">
+                <h2>FluxChecker</h2>
+                <p class="section-description">Month-to-month flux analysis by account and supplier. Shows accounts with movements greater than 20%.</p>
+            </div>
+
+            <div id="fluxMonthInfo" class="month-info"></div>
+
+            <div class="table-container">
+                <h3>Account-Level Flux</h3>
+                <div id="accountFluxTable"></div>
+            </div>
+
+            <div id="supplierDrillDown" class="drill-down hidden">
+                <h3>Supplier-Level Analysis</h3>
+                <div class="control-group">
+                    <label for="accountSelect">Select Account:</label>
+                    <select id="accountSelect"></select>
+                </div>
+                <div id="supplierFluxTable"></div>
+            </div>
+        </section>
+
+        <!-- TransactionChecker Section -->
+        <section id="transactionCheckerSection" class="content-section hidden">
+            <div class="section-header">
+                <h2>TransactionChecker</h2>
+                <p class="section-description">
+                    Coding consistency analysis by supplier. Flags suppliers with:
+                    <strong>new activity</strong>, <strong>disappeared activity</strong>,
+                    <strong>changed account coding</strong>, or <strong>multiple account codes</strong>.
+                    Suppliers with consistent single-account coding are hidden.
+                </p>
+            </div>
+
+            <div id="transactionMonthInfo" class="month-info"></div>
+
+            <div class="table-container">
+                <div id="transactionCheckerTable"></div>
+            </div>
+        </section>
     </div>
-    <script src="pong.js"></script>
+
+    <!-- Libraries and Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
