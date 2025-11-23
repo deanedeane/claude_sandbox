@@ -29,91 +29,132 @@
             <p class="subtitle">Tap areas to mark status</p>
 
             <div class="body-map-container">
-                <svg id="body-svg" viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Head -->
-                    <g id="head" class="body-part" data-area="head">
-                        <circle cx="150" cy="40" r="25" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="150" y="45" text-anchor="middle" fill="#8B7355" font-size="10">Head</text>
+                <svg id="body-svg" viewBox="0 0 300 620" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Defs for filters and gradients -->
+                    <defs>
+                        <filter id="body-glow">
+                            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- Background body outline (for reference) -->
+                    <g id="body-outline" opacity="0.3" pointer-events="none">
+                        <!-- Head outline -->
+                        <ellipse cx="150" cy="45" rx="30" ry="35" fill="none" stroke="#8B7355" stroke-width="1.5"/>
+                        <!-- Neck -->
+                        <path d="M 135 75 L 135 95 L 165 95 L 165 75" fill="none" stroke="#8B7355" stroke-width="1.5"/>
+                        <!-- Torso -->
+                        <path d="M 90 95 C 90 95, 85 120, 90 160 L 90 230 L 110 240 L 150 240 L 190 240 L 210 230 L 210 160 C 215 120, 210 95, 210 95 Z"
+                              fill="none" stroke="#8B7355" stroke-width="1.5"/>
+                        <!-- Arms -->
+                        <path d="M 90 95 L 70 120 L 65 180" fill="none" stroke="#8B7355" stroke-width="1.5"/>
+                        <path d="M 210 95 L 230 120 L 235 180" fill="none" stroke="#8B7355" stroke-width="1.5"/>
+                        <!-- Legs -->
+                        <path d="M 110 240 L 105 340 L 105 420 L 110 450 L 120 470" fill="none" stroke="#8B7355" stroke-width="1.5"/>
+                        <path d="M 190 240 L 195 340 L 195 420 L 190 450 L 180 470" fill="none" stroke="#8B7355" stroke-width="1.5"/>
                     </g>
 
-                    <!-- Neck -->
+                    <!-- Clickable body parts with improved shapes -->
+
+                    <!-- Head & Neck -->
+                    <g id="head" class="body-part" data-area="head">
+                        <ellipse cx="150" cy="45" rx="32" ry="37" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="150" y="50" text-anchor="middle" fill="#8B7355" font-size="11" font-weight="500">HEAD</text>
+                    </g>
+
                     <g id="neck" class="body-part" data-area="neck">
-                        <rect x="140" y="65" width="20" height="20" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="150" y="78" text-anchor="middle" fill="#8B7355" font-size="10">Neck</text>
+                        <path d="M 133 75 L 130 100 L 170 100 L 167 75 Z" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="150" y="92" text-anchor="middle" fill="#8B7355" font-size="10" font-weight="500">NECK</text>
                     </g>
 
                     <!-- Shoulders -->
                     <g id="left-shoulder" class="body-part" data-area="left-shoulder">
-                        <circle cx="110" cy="100" r="15" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="110" y="105" text-anchor="middle" fill="#8B7355" font-size="9">L Shldr</text>
+                        <ellipse cx="100" cy="110" rx="22" ry="28" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="100" y="113" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">L</text>
+                        <text x="100" y="122" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">SHLD</text>
                     </g>
                     <g id="right-shoulder" class="body-part" data-area="right-shoulder">
-                        <circle cx="190" cy="100" r="15" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="190" y="105" text-anchor="middle" fill="#8B7355" font-size="9">R Shldr</text>
+                        <ellipse cx="200" cy="110" rx="22" ry="28" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="200" y="113" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">R</text>
+                        <text x="200" y="122" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">SHLD</text>
                     </g>
 
                     <!-- Upper Back -->
                     <g id="upper-back" class="body-part" data-area="upper-back">
-                        <rect x="125" y="95" width="50" height="40" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="150" y="118" text-anchor="middle" fill="#8B7355" font-size="10">Upper</text>
-                        <text x="150" y="128" text-anchor="middle" fill="#8B7355" font-size="10">Back</text>
+                        <path d="M 125 100 L 120 145 L 180 145 L 175 100 Z" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="150" y="120" text-anchor="middle" fill="#8B7355" font-size="10" font-weight="500">UPPER</text>
+                        <text x="150" y="132" text-anchor="middle" fill="#8B7355" font-size="10" font-weight="500">BACK</text>
                     </g>
 
                     <!-- Lower Back -->
                     <g id="lower-back" class="body-part" data-area="lower-back">
-                        <rect x="125" y="145" width="50" height="40" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="150" y="168" text-anchor="middle" fill="#8B7355" font-size="10">Lower</text>
-                        <text x="150" y="178" text-anchor="middle" fill="#8B7355" font-size="10">Back</text>
+                        <path d="M 120 150 L 115 200 L 185 200 L 180 150 Z" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="150" y="172" text-anchor="middle" fill="#8B7355" font-size="10" font-weight="500">LOWER</text>
+                        <text x="150" y="184" text-anchor="middle" fill="#8B7355" font-size="10" font-weight="500">BACK</text>
                     </g>
 
                     <!-- Hips -->
                     <g id="left-hip" class="body-part" data-area="left-hip">
-                        <circle cx="120" cy="210" r="18" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="120" y="215" text-anchor="middle" fill="#8B7355" font-size="9">L Hip</text>
+                        <ellipse cx="115" cy="225" rx="20" ry="25" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="115" y="225" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">L</text>
+                        <text x="115" y="235" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">HIP</text>
                     </g>
                     <g id="right-hip" class="body-part" data-area="right-hip">
-                        <circle cx="180" cy="210" r="18" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="180" y="215" text-anchor="middle" fill="#8B7355" font-size="9">R Hip</text>
+                        <ellipse cx="185" cy="225" rx="20" ry="25" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="185" y="225" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">R</text>
+                        <text x="185" y="235" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">HIP</text>
                     </g>
 
                     <!-- Hamstrings -->
                     <g id="left-hamstring" class="body-part" data-area="left-hamstring">
-                        <rect x="100" y="240" width="30" height="60" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="115" y="273" text-anchor="middle" fill="#8B7355" font-size="9">L Ham</text>
+                        <path d="M 95 255 L 92 315 L 118 315 L 120 255 Z" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="105" y="282" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">L</text>
+                        <text x="105" y="292" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">HAM</text>
                     </g>
                     <g id="right-hamstring" class="body-part" data-area="right-hamstring">
-                        <rect x="170" y="240" width="30" height="60" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="185" y="273" text-anchor="middle" fill="#8B7355" font-size="9">R Ham</text>
+                        <path d="M 180 255 L 178 315 L 204 315 L 205 255 Z" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="192" y="282" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">R</text>
+                        <text x="192" y="292" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">HAM</text>
                     </g>
 
                     <!-- Knees -->
                     <g id="left-knee" class="body-part" data-area="left-knee">
-                        <circle cx="115" cy="320" r="12" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="115" y="325" text-anchor="middle" fill="#8B7355" font-size="9">L Knee</text>
+                        <ellipse cx="105" cy="340" rx="18" ry="22" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="105" y="342" text-anchor="middle" fill="#8B7355" font-size="8" font-weight="500">L</text>
+                        <text x="105" y="350" text-anchor="middle" fill="#8B7355" font-size="8" font-weight="500">KNEE</text>
                     </g>
                     <g id="right-knee" class="body-part" data-area="right-knee">
-                        <circle cx="185" cy="320" r="12" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="185" y="325" text-anchor="middle" fill="#8B7355" font-size="9">R Knee</text>
+                        <ellipse cx="195" cy="340" rx="18" ry="22" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="195" y="342" text-anchor="middle" fill="#8B7355" font-size="8" font-weight="500">R</text>
+                        <text x="195" y="350" text-anchor="middle" fill="#8B7355" font-size="8" font-weight="500">KNEE</text>
                     </g>
 
                     <!-- Calves -->
                     <g id="left-calf" class="body-part" data-area="left-calf">
-                        <rect x="100" y="345" width="30" height="50" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="115" y="373" text-anchor="middle" fill="#8B7355" font-size="9">L Calf</text>
+                        <path d="M 92 365 L 88 425 L 112 425 L 115 365 Z" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="102" y="393" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">L</text>
+                        <text x="102" y="403" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">CALF</text>
                     </g>
                     <g id="right-calf" class="body-part" data-area="right-calf">
-                        <rect x="170" y="345" width="30" height="50" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="185" y="373" text-anchor="middle" fill="#8B7355" font-size="9">R Calf</text>
+                        <path d="M 185 365 L 182 425 L 206 425 L 208 365 Z" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="196" y="393" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">R</text>
+                        <text x="196" y="403" text-anchor="middle" fill="#8B7355" font-size="9" font-weight="500">CALF</text>
                     </g>
 
-                    <!-- Ankles -->
+                    <!-- Ankles & Feet -->
                     <g id="left-ankle" class="body-part" data-area="left-ankle">
-                        <circle cx="115" cy="410" r="10" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="115" y="414" text-anchor="middle" fill="#8B7355" font-size="8">L Ankle</text>
+                        <ellipse cx="100" cy="450" rx="16" ry="18" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="100" y="452" text-anchor="middle" fill="#8B7355" font-size="8" font-weight="500">L</text>
+                        <text x="100" y="460" text-anchor="middle" fill="#8B7355" font-size="8" font-weight="500">ANKLE</text>
                     </g>
                     <g id="right-ankle" class="body-part" data-area="right-ankle">
-                        <circle cx="185" cy="410" r="10" fill="none" stroke="#8B7355" stroke-width="2"/>
-                        <text x="185" y="414" text-anchor="middle" fill="#8B7355" font-size="8">R Ankle</text>
+                        <ellipse cx="200" cy="450" rx="16" ry="18" fill="none" stroke="#8B7355" stroke-width="2.5" filter="url(#body-glow)"/>
+                        <text x="200" y="452" text-anchor="middle" fill="#8B7355" font-size="8" font-weight="500">R</text>
+                        <text x="200" y="460" text-anchor="middle" fill="#8B7355" font-size="8" font-weight="500">ANKLE</text>
                     </g>
                 </svg>
             </div>
