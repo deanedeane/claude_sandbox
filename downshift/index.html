@@ -270,11 +270,16 @@
                     </div>
 
                     <div class="conversation-box">
-                        <label for="test-response">What did you experience?</label>
+                        <label>Quick Response (tap one):</label>
+                        <div id="quick-responses" class="quick-responses">
+                            <!-- Quick response buttons will be dynamically generated -->
+                        </div>
+
+                        <label for="test-response" style="margin-top: 1.5rem;">Or describe in detail (optional):</label>
                         <textarea
                             id="test-response"
-                            rows="4"
-                            placeholder="e.g., I can touch my toes easily, or I can only reach my shins, or It feels tight in my hamstrings..."
+                            rows="3"
+                            placeholder="Add any additional details..."
                             style="width: 100%; margin-top: 0.5rem;"
                         ></textarea>
                         <button id="voice-test-btn" class="voice-btn">🎤</button>

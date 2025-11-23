@@ -141,8 +141,8 @@ const Player = (() => {
     // Play chime
     playChime();
 
-    // Start exercise timer
-    startExerciseTimer(exercise.duration);
+    // Start exercise timer with voice cues
+    startExerciseTimer(exercise.duration, exercise.cues);
 
     // Haptic feedback
     if (navigator.vibrate) {
@@ -153,10 +153,24 @@ const Player = (() => {
   /**
    * Start exercise timer
    */
-  const startExerciseTimer = (duration) => {
+  const startExerciseTimer = (duration, cues = []) => {
     let timeRemaining = duration;
     const totalTime = duration;
     const circumference = 2 * Math.PI * 90; // Circle radius is 90
+
+    // Schedule voice cues
+    const cueTimings = [];
+    if (cues && cues.length > 0) {
+      // Speak first cue after 3 seconds
+      if (duration > 5) {
+        cueTimings.push({ time: totalTime - 3, cue: cues[0] });
+      }
+      // Speak second cue halfway through (if exercise is longer than 30 seconds)
+      if (cues.length > 1 && duration > 30) {
+        const halfwayTime = Math.floor(totalTime / 2);
+        cueTimings.push({ time: halfwayTime, cue: cues[1] });
+      }
+    }
 
     const updateTimer = () => {
       if (isPaused) return;
@@ -170,6 +184,13 @@ const Player = (() => {
       const progress = (timeRemaining / totalTime);
       const offset = circumference * (1 - progress);
       timerProgress.style.strokeDashoffset = offset;
+
+      // Check if we should speak a cue at this time
+      const cueToSpeak = cueTimings.find(ct => ct.time === timeRemaining);
+      if (cueToSpeak) {
+        // Speak cue reminder
+        speak(cueToSpeak.cue);
+      }
 
       timeRemaining--;
 

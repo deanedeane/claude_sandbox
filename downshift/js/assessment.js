@@ -258,9 +258,46 @@ Respond with JSON only:
     document.getElementById('test-name').textContent = test.name;
     document.getElementById('test-instructions').innerHTML = `<p style="color: var(--text-secondary); line-height: 1.8; font-size: 1.1rem; margin-bottom: 2rem;">${test.instructions}</p><p style="color: var(--text-tertiary); font-size: 0.95rem; font-style: italic;">${test.scoring_guide}</p>`;
 
+    // Generate quick response buttons
+    generateQuickResponses(test);
+
     // Reset input
     testResponse.value = '';
     document.getElementById('test-score-display').style.display = 'none';
+  };
+
+  /**
+   * Generate quick response buttons based on test
+   */
+  const generateQuickResponses = (test) => {
+    const quickResponsesDiv = document.getElementById('quick-responses');
+    quickResponsesDiv.innerHTML = '';
+
+    // Default responses that work for most tests
+    const responses = [
+      "Full range, no issues",
+      "Slight tightness, can complete",
+      "Moderate restriction, some discomfort",
+      "Significant limitation, painful"
+    ];
+
+    responses.forEach((response, index) => {
+      const btn = document.createElement('button');
+      btn.className = 'quick-response-btn';
+      btn.textContent = response;
+      btn.dataset.response = response;
+
+      btn.addEventListener('click', () => {
+        // Deselect all
+        document.querySelectorAll('.quick-response-btn').forEach(b => b.classList.remove('selected'));
+        // Select this one
+        btn.classList.add('selected');
+        // Set as test response
+        testResponse.value = response;
+      });
+
+      quickResponsesDiv.appendChild(btn);
+    });
   };
 
   /**
