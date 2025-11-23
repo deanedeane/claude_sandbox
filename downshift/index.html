@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="DownShift - Your pre-sleep mobility companion">
+
+    <title>DownShift</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/app.css">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav id="nav" class="nav">
+            <button class="nav-btn" data-view="bodymap">Body Map</button>
+            <button class="nav-btn" data-view="checkin">Check-In</button>
+            <button class="nav-btn" data-view="history">History</button>
+        </nav>
+
+        <!-- Module A: Body Map -->
+        <div id="view-bodymap" class="view">
+            <h1>Body Map</h1>
+            <p class="subtitle">Tap areas to mark status</p>
+
+            <div class="body-map-container">
+                <svg id="body-svg" viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Head -->
+                    <g id="head" class="body-part" data-area="head">
+                        <circle cx="150" cy="40" r="25" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="150" y="45" text-anchor="middle" fill="#8B7355" font-size="10">Head</text>
+                    </g>
+
+                    <!-- Neck -->
+                    <g id="neck" class="body-part" data-area="neck">
+                        <rect x="140" y="65" width="20" height="20" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="150" y="78" text-anchor="middle" fill="#8B7355" font-size="10">Neck</text>
+                    </g>
+
+                    <!-- Shoulders -->
+                    <g id="left-shoulder" class="body-part" data-area="left-shoulder">
+                        <circle cx="110" cy="100" r="15" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="110" y="105" text-anchor="middle" fill="#8B7355" font-size="9">L Shldr</text>
+                    </g>
+                    <g id="right-shoulder" class="body-part" data-area="right-shoulder">
+                        <circle cx="190" cy="100" r="15" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="190" y="105" text-anchor="middle" fill="#8B7355" font-size="9">R Shldr</text>
+                    </g>
+
+                    <!-- Upper Back -->
+                    <g id="upper-back" class="body-part" data-area="upper-back">
+                        <rect x="125" y="95" width="50" height="40" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="150" y="118" text-anchor="middle" fill="#8B7355" font-size="10">Upper</text>
+                        <text x="150" y="128" text-anchor="middle" fill="#8B7355" font-size="10">Back</text>
+                    </g>
+
+                    <!-- Lower Back -->
+                    <g id="lower-back" class="body-part" data-area="lower-back">
+                        <rect x="125" y="145" width="50" height="40" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="150" y="168" text-anchor="middle" fill="#8B7355" font-size="10">Lower</text>
+                        <text x="150" y="178" text-anchor="middle" fill="#8B7355" font-size="10">Back</text>
+                    </g>
+
+                    <!-- Hips -->
+                    <g id="left-hip" class="body-part" data-area="left-hip">
+                        <circle cx="120" cy="210" r="18" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="120" y="215" text-anchor="middle" fill="#8B7355" font-size="9">L Hip</text>
+                    </g>
+                    <g id="right-hip" class="body-part" data-area="right-hip">
+                        <circle cx="180" cy="210" r="18" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="180" y="215" text-anchor="middle" fill="#8B7355" font-size="9">R Hip</text>
+                    </g>
+
+                    <!-- Hamstrings -->
+                    <g id="left-hamstring" class="body-part" data-area="left-hamstring">
+                        <rect x="100" y="240" width="30" height="60" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="115" y="273" text-anchor="middle" fill="#8B7355" font-size="9">L Ham</text>
+                    </g>
+                    <g id="right-hamstring" class="body-part" data-area="right-hamstring">
+                        <rect x="170" y="240" width="30" height="60" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="185" y="273" text-anchor="middle" fill="#8B7355" font-size="9">R Ham</text>
+                    </g>
+
+                    <!-- Knees -->
+                    <g id="left-knee" class="body-part" data-area="left-knee">
+                        <circle cx="115" cy="320" r="12" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="115" y="325" text-anchor="middle" fill="#8B7355" font-size="9">L Knee</text>
+                    </g>
+                    <g id="right-knee" class="body-part" data-area="right-knee">
+                        <circle cx="185" cy="320" r="12" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="185" y="325" text-anchor="middle" fill="#8B7355" font-size="9">R Knee</text>
+                    </g>
+
+                    <!-- Calves -->
+                    <g id="left-calf" class="body-part" data-area="left-calf">
+                        <rect x="100" y="345" width="30" height="50" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="115" y="373" text-anchor="middle" fill="#8B7355" font-size="9">L Calf</text>
+                    </g>
+                    <g id="right-calf" class="body-part" data-area="right-calf">
+                        <rect x="170" y="345" width="30" height="50" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="185" y="373" text-anchor="middle" fill="#8B7355" font-size="9">R Calf</text>
+                    </g>
+
+                    <!-- Ankles -->
+                    <g id="left-ankle" class="body-part" data-area="left-ankle">
+                        <circle cx="115" cy="410" r="10" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="115" y="414" text-anchor="middle" fill="#8B7355" font-size="8">L Ankle</text>
+                    </g>
+                    <g id="right-ankle" class="body-part" data-area="right-ankle">
+                        <circle cx="185" cy="410" r="10" fill="none" stroke="#8B7355" stroke-width="2"/>
+                        <text x="185" y="414" text-anchor="middle" fill="#8B7355" font-size="8">R Ankle</text>
+                    </g>
+                </svg>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-color status-normal"></span>
+                    <span>Normal</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color status-tight"></span>
+                    <span>Tight</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color status-pain"></span>
+                    <span>Pain</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Module B: Check-In -->
+        <div id="view-checkin" class="view" style="display: none;">
+            <h1>Check-In</h1>
+            <p class="subtitle">How are you feeling today?</p>
+
+            <div class="checkin-container">
+                <div class="input-group">
+                    <label for="status-input">Current Status</label>
+                    <textarea
+                        id="status-input"
+                        placeholder="e.g., Did heavy squats today, low back feels compressed..."
+                        rows="4"
+                    ></textarea>
+                    <button id="voice-btn" class="voice-btn" aria-label="Voice input">🎤</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="duration-slider">Session Duration: <span id="duration-value">15</span> minutes</label>
+                    <input
+                        type="range"
+                        id="duration-slider"
+                        min="5"
+                        max="30"
+                        step="5"
+                        value="15"
+                        class="slider"
+                    >
+                    <div class="slider-marks">
+                        <span>5</span>
+                        <span>10</span>
+                        <span>15</span>
+                        <span>20</span>
+                        <span>25</span>
+                        <span>30</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Session Focus</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="focus" value="sleep" checked>
+                            <span>Relaxation / Sleep</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="focus" value="recovery">
+                            <span>Recovery / Mobility</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="api-key">LLM API Key (stored locally)</label>
+                    <input
+                        type="password"
+                        id="api-key"
+                        placeholder="sk-..."
+                        autocomplete="off"
+                    >
+                    <small>Your API key is stored locally and never sent anywhere except the LLM provider</small>
+                </div>
+
+                <button id="generate-routine-btn" class="primary-btn">Generate Routine</button>
+
+                <div id="loading-state" class="loading-state" style="display: none;">
+                    <div class="spinner"></div>
+                    <p>Generating your personalized routine...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Module C: Session Player -->
+        <div id="view-player" class="view" style="display: none;">
+            <div class="player-header">
+                <button id="exit-session-btn" class="icon-btn">✕</button>
+                <div class="session-timer">
+                    <span id="session-time-remaining">15:00</span>
+                </div>
+            </div>
+
+            <div class="player-content">
+                <h2 id="exercise-name">Child's Pose</h2>
+
+                <div class="exercise-timer">
+                    <div class="timer-circle">
+                        <svg viewBox="0 0 200 200">
+                            <circle cx="100" cy="100" r="90" fill="none" stroke="#2a2520" stroke-width="8"/>
+                            <circle
+                                id="timer-progress"
+                                cx="100"
+                                cy="100"
+                                r="90"
+                                fill="none"
+                                stroke="#D4AF37"
+                                stroke-width="8"
+                                stroke-linecap="round"
+                                transform="rotate(-90 100 100)"
+                                stroke-dasharray="565.48"
+                                stroke-dashoffset="0"
+                            />
+                        </svg>
+                        <div class="timer-text">
+                            <span id="exercise-timer">0:60</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stickman-container">
+                    <svg id="stickman-svg" viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Stickman will be dynamically generated -->
+                    </svg>
+                </div>
+
+                <div class="exercise-cues">
+                    <h3>Form Cues</h3>
+                    <ul id="cue-list">
+                        <!-- Dynamically populated -->
+                    </ul>
+
+                    <h3>Avoid</h3>
+                    <p id="avoid-tip"><!-- Dynamically populated --></p>
+                </div>
+
+                <div class="progress-indicator">
+                    <span id="current-exercise-num">1</span> / <span id="total-exercises">8</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Module D: Feedback -->
+        <div id="view-feedback" class="view" style="display: none;">
+            <h1>Session Complete</h1>
+            <p class="subtitle">How did that feel?</p>
+
+            <div class="feedback-container">
+                <div class="feedback-options">
+                    <button class="feedback-btn" data-feedback="too-easy">
+                        <span class="feedback-icon">↓</span>
+                        <span>Too Easy</span>
+                    </button>
+                    <button class="feedback-btn" data-feedback="just-right">
+                        <span class="feedback-icon">👍</span>
+                        <span>Just Right</span>
+                    </button>
+                    <button class="feedback-btn" data-feedback="too-hard">
+                        <span class="feedback-icon">↑</span>
+                        <span>Too Hard</span>
+                    </button>
+                </div>
+
+                <div class="feedback-notes">
+                    <label for="feedback-notes">Additional Notes (Optional)</label>
+                    <textarea
+                        id="feedback-notes"
+                        placeholder="Any specific feedback about the session..."
+                        rows="3"
+                    ></textarea>
+                </div>
+
+                <button id="submit-feedback-btn" class="primary-btn">Complete</button>
+            </div>
+        </div>
+
+        <!-- History View -->
+        <div id="view-history" class="view" style="display: none;">
+            <h1>Session History</h1>
+            <div id="history-list" class="history-list">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio element for chimes -->
+    <audio id="chime-audio" preload="auto">
+        <!-- We'll use Web Audio API instead for better control -->
+    </audio>
+
+    <script src="js/storage.js"></script>
+    <script src="js/llm.js"></script>
+    <script src="js/bodymap.js"></script>
+    <script src="js/checkin.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/stickman.js"></script>
+    <script src="js/feedback.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
