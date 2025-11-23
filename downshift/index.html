@@ -222,6 +222,102 @@
                     <span>Pain</span>
                 </div>
             </div>
+
+            <div style="text-align: center; margin-top: 2rem;">
+                <button id="start-assessment-btn" class="primary-btn" style="max-width: 400px; margin: 0 auto;">
+                    Start Full Assessment
+                </button>
+                <p style="color: var(--text-secondary); margin-top: 1rem; font-size: 0.9rem;">
+                    Guided 5-minute flexibility assessment to establish your baseline
+                </p>
+            </div>
+        </div>
+
+        <!-- Assessment Module -->
+        <div id="view-assessment" class="view" style="display: none;">
+            <div class="assessment-container">
+                <!-- Assessment Intro -->
+                <div id="assessment-intro" class="assessment-screen">
+                    <h1>Flexibility Assessment</h1>
+                    <p class="subtitle">Let's establish your movement baseline</p>
+
+                    <div class="assessment-intro-content">
+                        <p>I'll guide you through 6-8 simple movement tests. For each:</p>
+                        <ul style="text-align: left; max-width: 500px; margin: 2rem auto; color: var(--text-secondary); line-height: 1.8;">
+                            <li>I'll explain the movement</li>
+                            <li>You try it and describe what you feel</li>
+                            <li>I'll score your flexibility (0-10)</li>
+                        </ul>
+                        <p style="color: var(--text-primary); margin-top: 2rem;">This takes about 5 minutes.</p>
+                    </div>
+
+                    <button id="begin-assessment-btn" class="primary-btn">Begin Assessment</button>
+                </div>
+
+                <!-- Assessment Test Screen -->
+                <div id="assessment-test" class="assessment-screen" style="display: none;">
+                    <div class="assessment-progress">
+                        <span id="test-progress">Test 1 of 6</span>
+                    </div>
+
+                    <h2 id="test-category" style="color: var(--text-secondary); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;">Lower Body</h2>
+                    <h1 id="test-name" style="margin-bottom: 2rem;">Forward Fold Test</h1>
+
+                    <div id="test-instructions" class="test-instructions">
+                        <p style="color: var(--text-secondary); line-height: 1.8; font-size: 1.1rem; margin-bottom: 2rem;">
+                            <!-- LLM-generated instructions go here -->
+                        </p>
+                    </div>
+
+                    <div class="conversation-box">
+                        <label for="test-response">What did you experience?</label>
+                        <textarea
+                            id="test-response"
+                            rows="4"
+                            placeholder="e.g., I can touch my toes easily, or I can only reach my shins, or It feels tight in my hamstrings..."
+                            style="width: 100%; margin-top: 0.5rem;"
+                        ></textarea>
+                        <button id="voice-test-btn" class="voice-btn">🎤</button>
+                    </div>
+
+                    <div class="assessment-actions">
+                        <button id="score-test-btn" class="primary-btn">Score This Test</button>
+                    </div>
+
+                    <div id="test-score-display" style="display: none; margin-top: 2rem; padding: 1.5rem; background: var(--bg-elevated); border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">Your Score</p>
+                                <p id="test-score-value" style="font-size: 3rem; font-weight: 700; color: var(--accent-primary);">8/10</p>
+                            </div>
+                            <div style="text-align: right; flex: 1; margin-left: 2rem;">
+                                <p id="test-feedback" style="color: var(--text-secondary); line-height: 1.6;">
+                                    <!-- LLM feedback goes here -->
+                                </p>
+                            </div>
+                        </div>
+                        <button id="next-test-btn" class="primary-btn" style="margin-top: 1.5rem;">Next Test</button>
+                    </div>
+                </div>
+
+                <!-- Assessment Results Screen -->
+                <div id="assessment-results" class="assessment-screen" style="display: none;">
+                    <h1>Assessment Complete</h1>
+                    <p class="subtitle">Here's your flexibility profile</p>
+
+                    <div id="results-chart" class="results-chart">
+                        <!-- Bar charts will be inserted here -->
+                    </div>
+
+                    <button id="save-assessment-btn" class="primary-btn" style="margin-top: 2rem;">Save & Return to Body Map</button>
+                </div>
+
+                <!-- Loading State -->
+                <div id="assessment-loading" style="display: none; text-align: center; padding: 3rem;">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 1rem; color: var(--text-secondary);" id="loading-message">Generating your personalized assessment...</p>
+                </div>
+            </div>
         </div>
 
         <!-- Module B: Check-In -->
@@ -408,6 +504,7 @@
     <script src="js/player.js"></script>
     <script src="js/stickman.js"></script>
     <script src="js/feedback.js"></script>
+    <script src="js/assessment.js"></script>
     <script src="js/navigation.js"></script>
     <script src="js/app.js"></script>
 </body>

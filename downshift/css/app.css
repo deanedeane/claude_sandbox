@@ -751,3 +751,130 @@ button:disabled {
 .mb-lg {
   margin-bottom: var(--spacing-lg);
 }
+
+/* ================================
+   Assessment Module
+   ================================ */
+
+.assessment-container {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.assessment-screen {
+  text-align: center;
+}
+
+.assessment-intro-content {
+  margin: var(--spacing-xl) 0;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.assessment-intro-content ul {
+  list-style-position: inside;
+}
+
+.assessment-progress {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-md);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.test-instructions {
+  background-color: var(--bg-elevated);
+  padding: var(--spacing-lg);
+  border-radius: 8px;
+  margin-bottom: var(--spacing-xl);
+  border-left: 4px solid var(--accent-primary);
+}
+
+.conversation-box {
+  position: relative;
+  margin-bottom: var(--spacing-xl);
+}
+
+.conversation-box label {
+  display: block;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  font-weight: 500;
+  text-align: left;
+}
+
+.conversation-box textarea {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--text-tertiary);
+  border-radius: 8px;
+  padding: var(--spacing-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color var(--transition-fast);
+}
+
+.conversation-box textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.assessment-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.results-chart {
+  margin: var(--spacing-xl) 0;
+}
+
+.result-bar {
+  margin-bottom: var(--spacing-lg);
+}
+
+.result-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.result-bar-label {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.result-bar-score {
+  color: var(--accent-primary);
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.result-bar-track {
+  height: 32px;
+  background-color: var(--bg-elevated);
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--text-tertiary);
+}
+
+.result-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-success));
+  border-radius: 16px;
+  transition: width 1s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 12px;
+}
+
+.result-bar-fill span {
+  color: var(--bg-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}

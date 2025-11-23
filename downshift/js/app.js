@@ -19,6 +19,7 @@
       CheckIn.init();
       Player.init();
       Feedback.init();
+      Assessment.init();
       History.init();
 
       console.log('All modules initialized');
