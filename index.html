@@ -3,23 +3,649 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Game</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Project Context Manager V6 (Writer Mode)</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --sidebar-bg: #f1f5f9;
+            --editor-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --magic-color: #8b5cf6;
+            --danger-color: #ef4444;
+            --link-color: #2563eb;
+            --link-bg: #dbeafe;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --editor-font: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * { box-sizing: border-box; outline: none; }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            background: #fff;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 1.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+            height: 50px; flex-shrink: 0; z-index: 10;
+        }
+
+        .header-left { display: flex; align-items: center; gap: 12px; }
+
+        .sidebar-toggle {
+            background: transparent; border: none; color: var(--text-secondary);
+            cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;
+            border-radius: 4px;
+        }
+        .sidebar-toggle:hover { background: #f1f5f9; color: var(--text-primary); }
+
+        .header-title input {
+            font-size: 1rem; font-weight: 600; border: 1px solid transparent;
+            padding: 4px 8px; border-radius: 4px; background: transparent; color: var(--text-primary);
+        }
+        .header-title input:hover { border-color: var(--border-color); background: #f1f5f9; }
+
+        .header-actions { display: flex; gap: 8px; }
+
+        button {
+            cursor: pointer; padding: 5px 10px; border-radius: 6px;
+            border: 1px solid var(--border-color); background: white;
+            font-size: 0.8rem; color: var(--text-primary);
+            display: inline-flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        button:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+        button.primary { background: var(--accent-color); color: white; border-color: var(--accent-color); }
+        button.primary:hover { background: var(--accent-hover); }
+
+        button.magic { background: #f3e8ff; color: var(--magic-color); border-color: #d8b4fe; font-weight: 600; }
+        button.magic:hover { background: var(--magic-color); color: white; }
+
+        button.toggle-split.active { background: var(--accent-color); color: white; }
+
+        /* --- Layout --- */
+        main { display: flex; flex: 1; overflow: hidden; }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            width: 280px; background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; flex-shrink: 0;
+            transition: width 0.3s ease, opacity 0.2s ease;
+        }
+        .sidebar.collapsed { width: 0; border: none; opacity: 0; overflow: hidden; }
+
+        .tree-container { flex: 1; overflow-y: auto; padding: 1rem; }
+        .tree-toolbar { padding: 8px; border-top: 1px solid var(--border-color); display: flex; gap: 5px; background: #e2e8f0; }
+        .tree-toolbar button { flex: 1; justify-content: center; border: none; background: transparent; }
+        .tree-toolbar button:hover { background: rgba(255,255,255,0.5); }
+
+        .node-item { position: relative; }
+        .node-content {
+            display: flex; align-items: center; padding: 4px 8px;
+            cursor: pointer; border-radius: 4px; margin-bottom: 2px;
+            border: 1px solid transparent; font-size: 0.9rem;
+        }
+        .node-content:hover { background-color: rgba(0,0,0,0.05); }
+        .node-content.selected { background-color: #fff; border-color: #cbd5e1; color: var(--accent-color); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .node-content.pinned { background-color: #fff7ed; border-color: #fed7aa; }
+
+        .toggle-btn { width: 20px; height: 20px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 0; display:flex; align-items:center; justify-content:center;}
+        .node-type-badge { font-size: 0.6rem; padding: 1px 4px; background: #e2e8f0; color: var(--text-secondary); border-radius: 3px; margin-right: 6px; text-transform: uppercase; }
+        .node-children { margin-left: 18px; border-left: 1px solid #cbd5e1; padding-left: 4px; }
+        .node-children.hidden { display: none; }
+
+        /* --- Editors --- */
+        .editors-wrapper { flex: 1; display: flex; overflow: hidden; background: #f8f9fa; }
+        .editor-pane {
+            flex: 1; display: flex; flex-direction: column;
+            background: var(--editor-bg);
+            border-left: 1px solid var(--border-color);
+            min-width: 0;
+        }
+        .editors-wrapper.split .editor-pane { flex: 0 0 50%; }
+
+        /* Pane Header (Breadcrumbs/Pin) */
+        .pane-header {
+            padding: 8px 24px; border-bottom: 1px solid var(--border-color);
+            background: #fff; display: flex; justify-content: space-between; align-items: center;
+            height: 40px; flex-shrink: 0;
+            font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;
+        }
+
+        /* Editor Layout */
+        .editor-scroller {
+            flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+            padding: 0; /* Reset padding to allow full width header */
+        }
+
+        .editor-inner {
+            max-width: 900px; width: 100%; margin: 0 auto;
+            padding: 2rem 3rem;
+            display: flex; flex-direction: column; flex: 1;
+        }
+
+        /* 1. Header Section (Title/Type) */
+        .node-header-row {
+            display: flex; align-items: center; gap: 15px; margin-bottom: 1.5rem;
+        }
+        .node-title-input {
+            flex: 1; font-size: 1.75rem; font-weight: 700; color: var(--text-primary);
+            border: none; background: transparent; padding: 0; margin: 0;
+            font-family: var(--editor-font);
+        }
+        .node-title-input:focus { outline: none; }
+        .node-title-input::placeholder { color: #cbd5e1; }
+
+        .node-type-select {
+            font-size: 0.8rem; padding: 4px 8px; border-radius: 4px;
+            border: 1px solid var(--border-color); background: #f8f9fa; color: var(--text-secondary);
+            font-weight: 600; text-transform: uppercase; cursor: pointer;
+        }
+        .node-type-select:hover { background: #e2e8f0; }
+
+        /* 2. Metadata Block (Summary) */
+        .metadata-block {
+            background: #f8fafc; border-radius: 8px; border: 1px solid var(--border-color);
+            margin-bottom: 2rem; overflow: hidden; transition: all 0.3s;
+        }
+        .metadata-header {
+            padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;
+            background: #f1f5f9; cursor: pointer; border-bottom: 1px solid transparent;
+        }
+        .metadata-header:hover { background: #e2e8f0; }
+        .metadata-label { font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; display: flex; gap: 8px; align-items: center; }
+
+        .metadata-content { padding: 12px; display: block; }
+        .metadata-block.collapsed .metadata-content { display: none; }
+        .metadata-block.collapsed .metadata-header { border-bottom: none; }
+        .metadata-block.collapsed { border-color: transparent; background: transparent; padding: 0; }
+        .metadata-block.collapsed .metadata-header { background: transparent; padding: 0; margin-bottom: 1rem; justify-content: flex-start; gap: 10px; }
+
+        .summary-editor {
+            width: 100%; min-height: 60px; border: 1px solid var(--border-color);
+            border-radius: 4px; padding: 8px; font-size: 0.9rem; background: #fff;
+            color: var(--text-secondary);
+        }
+
+        /* 3. Main Details Editor */
+        .details-container {
+            flex: 1; display: flex; flex-direction: column;
+        }
+        .details-editor {
+            flex: 1; width: 100%; border: none; resize: none;
+            font-size: 1.05rem; line-height: 1.7; color: var(--text-primary);
+            font-family: var(--editor-font); padding: 0; background: transparent;
+            min-height: 300px;
+        }
+        .details-editor:focus { outline: none; }
+        .details-editor:empty:before { content: attr(placeholder); color: #cbd5e1; }
+
+        /* Actions Bar at bottom of editor */
+        .editor-actions-bar {
+            margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border-color);
+            display: flex; gap: 10px;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center;
+            z-index: 2000;
+        }
+        .modal {
+            background: white; width: 500px; max-height: 85vh; border-radius: 8px;
+            display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        .modal-header { padding: 15px; border-bottom: 1px solid var(--border-color); font-weight: 600; display: flex; justify-content: space-between; }
+        .modal-body { padding: 15px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 15px; }
+
+        /* Diff Styles */
+        .diff-container { background: #f8fafc; padding: 10px; border-radius: 6px; font-size: 0.9rem; }
+        .diff-label { font-size: 0.75rem; color: #64748b; font-weight: 700; margin-bottom: 5px; text-transform: uppercase; }
+        .diff-old { color: #64748b; text-decoration: line-through; margin-bottom: 8px; }
+
+        #toast {
+            position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: white;
+            padding: 12px 24px; border-radius: 8px; transform: translateY(100px);
+            transition: transform 0.3s; z-index: 3000;
+        }
+        #toast.show { transform: translateY(0); }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Pong Game</h1>
-        <div class="instructions">
-            <p>Use W/S keys to move left paddle | Arrow Up/Down for right paddle</p>
-            <p>First to 5 points wins!</p>
+
+    <header>
+        <div class="header-left">
+            <button class="sidebar-toggle" onclick="app.toggleSidebar()" title="Toggle Sidebar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+            </button>
+            <div class="header-title">
+                <input type="text" id="project-name" value="My Software Project">
+            </div>
         </div>
-        <canvas id="pongCanvas" width="800" height="600"></canvas>
-        <div class="score">
-            <div class="player1-score">Player 1: <span id="player1Score">0</span></div>
-            <div class="player2-score">Player 2: <span id="player2Score">0</span></div>
+        <div class="header-actions">
+            <button onclick="app.openSettings()">⚙️ API Key</button>
+            <span style="width:1px; background:#e2e8f0; margin:0 4px;"></span>
+            <button class="toggle-split" id="split-toggle-btn" onclick="app.toggleSplitView()">◫ Split</button>
+            <button onclick="app.exportProject()">Export</button>
+            <button onclick="document.getElementById('file-input').click()">Import</button>
+            <input type="file" id="file-input" accept=".json" style="display: none;" onchange="app.importProject(this)">
         </div>
-        <button id="resetButton">Reset Game</button>
+    </header>
+
+    <main>
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="tree-container" id="tree-root"></div>
+            <div class="tree-toolbar">
+                <button onclick="app.addSibling()" title="Sibling">+S</button>
+                <button onclick="app.addChild()" title="Child">+C</button>
+                <button onclick="app.moveNode('up')">↑</button>
+                <button onclick="app.moveNode('down')">↓</button>
+                <button style="color:var(--danger-color);" onclick="app.deleteNode()">×</button>
+            </div>
+        </div>
+
+        <!-- Editors -->
+        <div class="editors-wrapper" id="editors-wrapper">
+            <!-- Primary (Left) -->
+            <div class="editor-pane" id="primary-pane">
+                <div class="pane-header">
+                    <div><span style="color:var(--accent-color);">●</span> Primary Focus</div>
+                    <button onclick="app.pinCurrentToSecondary()" style="padding:2px 8px;">Pin Right →</button>
+                </div>
+                <div class="editor-scroller" id="primary-editor"></div>
+            </div>
+
+            <!-- Secondary (Right) -->
+            <div class="editor-pane" id="secondary-pane" style="display:none;">
+                <div class="pane-header">
+                    <div><span style="color:#f59e0b;">★</span> Reference</div>
+                    <button onclick="app.closeSplitView()" style="padding:2px 8px;">Close</button>
+                </div>
+                <div class="editor-scroller" id="secondary-editor"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="node-modal">
+        <div class="modal">
+            <div class="modal-header"><span>Select Node</span><button onclick="app.closeModals()">✕</button></div>
+            <div class="modal-body" id="node-modal-list"></div>
+        </div>
     </div>
-    <script src="pong.js"></script>
+
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal" style="width: 400px;">
+            <div class="modal-header"><span>Settings</span><button onclick="app.closeModals()">✕</button></div>
+            <div class="modal-body">
+                <label style="font-size:0.8rem; font-weight:600;">Google Gemini API Key</label>
+                <input type="password" id="api-key-input" placeholder="AIzaSy..." style="width:100%; padding:8px; border:1px solid #e2e8f0; border-radius:4px;">
+                <div style="font-size:0.8rem; color:#64748b;">Required for Auto-Summary and Updates. Stored locally.</div>
+                <button class="primary" style="margin-top:10px;" onclick="app.saveSettings()">Save Key</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="proposal-modal">
+        <div class="modal" style="width: 600px;">
+            <div class="modal-header"><span>✨ AI Proposal</span><button onclick="app.closeModals()">✕</button></div>
+            <div class="modal-body">
+                <div class="diff-container">
+                    <div class="diff-label">Replacing Text</div>
+                    <div id="prop-old-text" class="diff-old"></div>
+                </div>
+                <div class="diff-label" style="color:var(--magic-color);">New Text</div>
+                <textarea id="prop-editor" style="width:100%; height:150px; padding:10px; border:1px solid #e2e8f0; border-radius:4px;"></textarea>
+                <button class="primary" onclick="app.applyProposal()">Accept Change</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast">Action Complete</div>
+
+    <script>
+        const STORAGE_KEY = 'app_outline_v6';
+        const SETTINGS_KEY = 'app_outline_settings';
+        const LEVEL_TYPES = ['Root', 'Module', 'Feature', 'Screen', 'Component', 'User Story', 'Database'];
+        const apiKey = "";
+
+        class LLMService {
+            constructor() { this.localKey = localStorage.getItem(SETTINGS_KEY) || ''; }
+            setKey(k) { this.localKey = k; localStorage.setItem(SETTINGS_KEY, k); }
+            getKey() { return (typeof apiKey !== 'undefined' && apiKey.length > 5) ? apiKey : this.localKey; }
+
+            async call(prompt) {
+                const key = this.getKey();
+                if (!key) throw new Error("No API Key");
+                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await resp.json();
+                return data.candidates[0].content.parts[0].text.trim();
+            }
+        }
+
+        const generateId = () => 'node_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+        class App {
+            constructor() {
+                this.state = {
+                    project: this.createProject(),
+                    selectedNodeId: null, secondaryNodeId: null,
+                    isSplitView: false, isSidebarCollapsed: false,
+                    selectionRange: null, pendingProposal: null,
+                    summaryCollapsed: {} // Track UI state of summary boxes
+                };
+                this.llm = new LLMService();
+                this.bindUI();
+                this.loadFromStorage();
+            }
+
+            createProject() {
+                const rid = generateId();
+                return { id: generateId(), name: "New Project", rootNodeId: rid, nodes: { [rid]: { id: rid, title: "Project Root", type: "Root", summary: "", details: "", children: [], isCollapsed: false } } };
+            }
+
+            bindUI() {
+                this.els = {
+                    tree: document.getElementById('tree-root'),
+                    sidebar: document.getElementById('sidebar'),
+                    primary: document.getElementById('primary-editor'),
+                    secondary: document.getElementById('secondary-editor'),
+                    wrappers: document.getElementById('editors-wrapper'),
+                    modals: { node: document.getElementById('node-modal'), settings: document.getElementById('settings-modal'), proposal: document.getElementById('proposal-modal') }
+                };
+                document.getElementById('api-key-input').value = this.llm.localKey;
+                document.addEventListener('selectionchange', () => this.trackSelection());
+                document.addEventListener('click', (e) => { if (e.target.classList.contains('node-link')) { const id = e.target.getAttribute('data-node-id'); if(this.state.project.nodes[id]) this.selectNode(id, true); } });
+            }
+
+            trackSelection() {
+                const sel = window.getSelection();
+                if (sel.rangeCount > 0 && !sel.isCollapsed) {
+                    let el = sel.anchorNode.parentElement;
+                    while(el && !el.classList.contains('rich-editor') && !el.classList.contains('details-editor')) { el = el.parentElement; }
+                    if (el) this.state.selectionRange = sel.getRangeAt(0);
+                }
+            }
+
+            /* --- Logic --- */
+            save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state.project)); }
+            loadFromStorage() {
+                const d = localStorage.getItem(STORAGE_KEY);
+                if (d) this.state.project = JSON.parse(d);
+                this.state.selectedNodeId = this.state.project.rootNodeId;
+                document.getElementById('project-name').value = this.state.project.name;
+                this.render();
+            }
+
+            render() {
+                this.els.tree.innerHTML = '';
+                this.els.tree.appendChild(this.buildTree(this.state.project.rootNodeId));
+
+                if (this.state.isSplitView) {
+                    this.els.wrappers.classList.add('split');
+                    document.getElementById('secondary-pane').style.display = 'flex';
+                } else {
+                    this.els.wrappers.classList.remove('split');
+                    document.getElementById('secondary-pane').style.display = 'none';
+                }
+
+                this.renderEditor(this.state.selectedNodeId, this.els.primary, 'primary');
+                if (this.state.isSplitView) this.renderEditor(this.state.secondaryNodeId, this.els.secondary, 'secondary');
+            }
+
+            /* --- Editor Rendering (Redesigned) --- */
+            renderEditor(id, container, paneId) {
+                if (!id || !this.state.project.nodes[id]) {
+                    container.innerHTML = '<div style="padding:40px; text-align:center; color:#94a3b8;">No Node Selected</div>';
+                    return;
+                }
+                const node = this.state.project.nodes[id];
+                const types = LEVEL_TYPES.map(t => `<option ${t===node.type?'selected':''}>${t}</option>`).join('');
+                const isSumCollapsed = this.state.summaryCollapsed[id] !== false;
+                const collapseClass = isSumCollapsed ? 'collapsed' : '';
+                const collapseArrow = isSumCollapsed ? '▶' : '▼';
+
+                container.innerHTML = `
+                    <div class="editor-inner">
+                        <!-- 1. Header Row -->
+                        <div class="node-header-row">
+                            <input type="text" class="node-title-input" value="${node.title}" placeholder="Untitled Node"
+                                oninput="app.updateNode('${id}', 'title', this.value)">
+                            <select class="node-type-select" onchange="app.updateNode('${id}', 'type', this.value)">${types}</select>
+                        </div>
+
+                        <!-- 2. Metadata / Summary Block -->
+                        <div class="metadata-block ${collapseClass}" id="meta-${id}">
+                            <div class="metadata-header" onclick="app.toggleMeta('${id}')">
+                                <div class="metadata-label">
+                                    <span>${collapseArrow}</span> Metadata & Summary
+                                </div>
+                                <div style="display:${isSumCollapsed?'none':'flex'}; gap:10px;">
+                                    <button class="magic" style="padding:2px 8px; font-size:0.7rem;" onclick="app.autoSummarize('${id}', event)">✨ Auto-Gen</button>
+                                </div>
+                            </div>
+                            <div class="metadata-content">
+                                <div class="rich-editor summary-editor" id="editor-${id}-summary" contenteditable="true"
+                                     oninput="app.updateNode('${id}', 'summary', this.innerHTML)">${node.summary || '<i>No summary...</i>'}</div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Main Details -->
+                        <div class="details-container">
+                            <div class="details-editor" id="editor-${id}-details" contenteditable="true"
+                                 placeholder="Start writing specifications here..."
+                                 oninput="app.updateNode('${id}', 'details', this.innerHTML)"
+                                 onmouseup="app.saveSel()" onkeyup="app.saveSel()">${node.details}</div>
+                        </div>
+
+                        <!-- 4. Footer Actions -->
+                        <div class="editor-actions-bar">
+                             <button onclick="app.triggerUpwardUpdate('${id}', 'details')">✨ AI Update Parent</button>
+                             <button onclick="app.openLinkModal('${id}', 'details')">🔗 Link Text</button>
+                             <button onclick="app.copyPrompt('${id}')">📋 Copy for LLM</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            updateNode(id, field, val) {
+                this.state.project.nodes[id][field] = val;
+                this.save();
+                if (field === 'title') {
+                    const el = document.getElementById(`tree-title-${id}`);
+                    if(el) el.innerText = val;
+                }
+            }
+
+            toggleMeta(id) {
+                this.state.summaryCollapsed[id] = !this.state.summaryCollapsed[id];
+                const block = document.getElementById(`meta-${id}`);
+                const header = block.querySelector('.metadata-header span');
+                if (this.state.summaryCollapsed[id]) {
+                    block.classList.add('collapsed');
+                    header.innerText = '▶';
+                    block.querySelector('.metadata-header div:last-child').style.display = 'none';
+                } else {
+                    block.classList.remove('collapsed');
+                    header.innerText = '▼';
+                    block.querySelector('.metadata-header div:last-child').style.display = 'flex';
+                }
+            }
+
+            async autoSummarize(id, e) {
+                e.stopPropagation();
+                const node = this.state.project.nodes[id];
+                if (!node.details || node.details.length < 10) return this.showToast("Write some details first!");
+
+                const btn = e.target;
+                const originalText = btn.innerText;
+                btn.innerText = "Generating...";
+
+                try {
+                    const sum = await this.llm.call(`Summarize this technical specification into 2-3 concise sentences:\n\n${node.details}`);
+                    node.summary = sum;
+                    document.getElementById(`editor-${id}-summary`).innerHTML = sum;
+                    this.save();
+                    this.showToast("Summary Generated");
+                } catch (err) {
+                    alert("AI Error: " + err.message);
+                }
+                btn.innerText = originalText;
+            }
+
+            /* --- Tree --- */
+            buildTree(id) {
+                const node = this.state.project.nodes[id];
+                const item = document.createElement('div'); item.className = 'node-item';
+                const content = document.createElement('div');
+                let cls = 'node-content';
+                if(this.state.selectedNodeId===id) cls+=' selected';
+                if(this.state.isSplitView && this.state.secondaryNodeId===id) cls+=' pinned';
+                content.className = cls;
+                content.innerHTML = `<button class="toggle-btn" onclick="app.toggleCollapse('${id}', event)">${node.children.length?(node.isCollapsed?'▶':'▼'):'•'}</button><span class="node-type-badge">${node.type}</span><span id="tree-title-${id}">${node.title}</span>`;
+                content.onclick = (e) => this.selectNode(id, e.altKey);
+                item.appendChild(content);
+                if(node.children.length && !node.isCollapsed) {
+                    const k = document.createElement('div'); k.className='node-children';
+                    node.children.forEach(c => k.appendChild(this.buildTree(c)));
+                    item.appendChild(k);
+                }
+                return item;
+            }
+            toggleCollapse(id,e) { e.stopPropagation(); this.state.project.nodes[id].isCollapsed = !this.state.project.nodes[id].isCollapsed; this.save(); this.renderTreeOnly(); }
+            renderTreeOnly() { this.els.tree.innerHTML=''; this.els.tree.appendChild(this.buildTree(this.state.project.rootNodeId)); }
+
+            /* --- Standard Methods --- */
+            selectNode(id, sec=false) {
+                if(sec) { this.state.secondaryNodeId=id; this.state.isSplitView=true; this.renderEditor(id, this.els.secondary, 'secondary'); }
+                else { this.state.selectedNodeId=id; this.renderEditor(id, this.els.primary, 'primary'); }
+                this.renderTreeOnly();
+            }
+            getParent(id) { for(let k in this.state.project.nodes) if(this.state.project.nodes[k].children.includes(id)) return k; return null; }
+            addChild() {
+                const p = this.state.selectedNodeId; const n = generateId();
+                this.state.project.nodes[n] = { id:n, title:"New Item", type:"Feature", summary:"", details:"", children:[], isCollapsed:false };
+                this.state.project.nodes[p].children.push(n); this.state.project.nodes[p].isCollapsed=false;
+                this.selectNode(n); this.save();
+            }
+            addSibling() {
+                const c = this.state.selectedNodeId; const p = this.getParent(c); if(!p) return;
+                const n = generateId(); this.state.project.nodes[n] = { id:n, title:"New Item", type:"Feature", summary:"", details:"", children:[], isCollapsed:false };
+                const idx = this.state.project.nodes[p].children.indexOf(c);
+                this.state.project.nodes[p].children.splice(idx+1, 0, n);
+                this.selectNode(n); this.save();
+            }
+            deleteNode() {
+                const id = this.state.selectedNodeId; const p = this.getParent(id); if(!p) return;
+                if(!confirm("Delete node?")) return;
+                this.state.project.nodes[p].children = this.state.project.nodes[p].children.filter(x=>x!==id);
+                const del=(k)=>{ (this.state.project.nodes[k].children||[]).forEach(del); delete this.state.project.nodes[k]; };
+                del(id); this.selectNode(p); this.save();
+            }
+            moveNode(d) {
+                const id = this.state.selectedNodeId; const p = this.getParent(id); if(!p) return;
+                const a = this.state.project.nodes[p].children; const i = a.indexOf(id);
+                if(d==='up'&&i>0) [a[i],a[i-1]]=[a[i-1],a[i]]; else if(d==='down'&&i<a.length-1) [a[i],a[i+1]]=[a[i+1],a[i]];
+                this.save(); this.renderTreeOnly();
+            }
+            saveSel() {
+                const sel = window.getSelection();
+                if(sel.rangeCount>0) {
+                    let el = sel.anchorNode.parentElement;
+                    while(el && !el.classList.contains('rich-editor') && !el.classList.contains('details-editor')) el = el.parentElement;
+                    if(el) this.state.selectionRange = sel.getRangeAt(0);
+                }
+            }
+
+            /* --- Modals & Helpers --- */
+            toggleSidebar() { this.state.isSidebarCollapsed=!this.state.isSidebarCollapsed; this.els.sidebar.classList.toggle('collapsed'); }
+            toggleSplitView() { this.state.isSplitView=!this.state.isSplitView; if(this.state.isSplitView && !this.state.secondaryNodeId) this.state.secondaryNodeId=this.state.selectedNodeId; this.render(); }
+            closeSplitView() { this.state.isSplitView=false; this.render(); }
+            pinCurrentToSecondary() { this.state.secondaryNodeId=this.state.selectedNodeId; this.state.isSplitView=true; this.render(); }
+            openSettings() { document.getElementById('api-key-input').value = this.llm.localKey; this.els.modals.settings.style.display='flex'; }
+            saveSettings() { this.llm.setKey(document.getElementById('api-key-input').value); this.closeModals(); }
+            closeModals() { Object.values(this.els.modals).forEach(m=>m.style.display='none'); }
+            showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+            copyPrompt(id) {
+                const n = this.state.project.nodes[id];
+                navigator.clipboard.writeText(`TITLE: ${n.title}\nSUMMARY: ${n.summary}\nDETAILS: ${n.details}`).then(()=>this.showToast("Copied"));
+            }
+
+            /* --- AI Update & Proposal --- */
+            async triggerUpwardUpdate(targetId, field) {
+                const sel = this.state.selectionRange;
+                if(!sel || sel.toString().trim().length===0) return this.showToast("Select text to update");
+                const sourceId = (targetId===this.state.secondaryNodeId)?this.state.selectedNodeId:this.state.secondaryNodeId;
+                if(!sourceId || sourceId===targetId) return this.showToast("Open source node in other pane");
+
+                const targetText = sel.toString();
+                const sNode = this.state.project.nodes[sourceId];
+
+                this.state.pendingProposal = { range: sel.cloneRange(), targetId, field };
+                document.getElementById('prop-old-text').innerText = targetText;
+                document.getElementById('prop-editor').value = "Generating...";
+                this.els.modals.proposal.style.display = 'flex';
+
+                try {
+                    const txt = await this.llm.call(`Rewrite this text to match the new context.\n\nCONTEXT:\n${sNode.details}\n\nTEXT TO REWRITE:\n${targetText}`);
+                    document.getElementById('prop-editor').value = txt;
+                } catch(e) { document.getElementById('prop-editor').value = "Error: " + e.message; }
+            }
+            applyProposal() {
+                const txt = document.getElementById('prop-editor').value;
+                const { range, targetId, field } = this.state.pendingProposal;
+                range.deleteContents(); range.insertNode(document.createTextNode(txt));
+                const el = document.getElementById(`editor-${targetId}-${field}`);
+                this.updateNode(targetId, field, el.innerHTML);
+                this.closeModals();
+            }
+
+            /* --- Linking --- */
+            openLinkModal(id, field) { this.state.pendingLink={id,field}; if(!this.state.selectionRange) return this.showToast("Select text");
+                const lst=document.getElementById('node-modal-list'); lst.innerHTML='';
+                Object.values(this.state.project.nodes).forEach(n=>{
+                    const d=document.createElement('div'); d.style.padding='8px'; d.style.cursor='pointer'; d.style.borderBottom='1px solid #eee';
+                    d.innerHTML=`<b>${n.title}</b> <small>${n.type}</small>`;
+                    d.onclick=()=>this.applyLink(n.id); lst.appendChild(d);
+                });
+                this.els.modals.node.style.display='flex';
+            }
+            applyLink(tid) {
+                const r = this.state.selectionRange; const a = document.createElement('a');
+                a.className='node-link'; a.setAttribute('data-node-id', tid); a.textContent=r.toString();
+                r.deleteContents(); r.insertNode(a);
+                const {id, field} = this.state.pendingLink;
+                this.updateNode(id, field, document.getElementById(`editor-${id}-${field}`).innerHTML);
+                this.closeModals();
+            }
+
+            /* --- Import/Export --- */
+            exportProject() { const s="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(this.state.project)); const a=document.createElement('a'); a.href=s; a.download="project.json"; document.body.appendChild(a); a.click(); a.remove(); }
+            importProject(i) { const f=i.files[0]; if(!f) return; const r=new FileReader(); r.onload=e=>{ try{this.state.project=JSON.parse(e.target.result); this.state.selectedNodeId=this.state.project.rootNodeId; this.save(); this.render();}catch(e){alert("Invalid");}}; r.readAsText(f); i.value=''; }
+        }
+
+        const app = new App();
+    </script>
 </body>
 </html>
