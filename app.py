@@ -74,6 +74,15 @@ def main():
             help="Required for AI-powered categorization of new merchants"
         )
 
+        # Show API key status
+        if hasattr(st.session_state, 'api_key') and st.session_state.api_key:
+            if st.session_state.api_key.strip():
+                st.success("✓ API key loaded")
+            else:
+                st.warning("⚠ No API key - manual categorization only")
+        elif api_key and api_key.strip():
+            st.info("💡 Click 'Process Transactions' to save API key")
+
         st.markdown("---")
         if st.button("🚀 Process Transactions", type="primary", use_container_width=True):
             process_transactions(
@@ -286,8 +295,35 @@ def show_merchant_mapping_review():
 
     st.info("""
     Review and edit how merchant names are standardized.
-    This consolidates variations like "AMAZON.CO.UK", "Amazon UK", "AMAZON" into a single name like "Amazon".
+    This consolidates variations like "AMAZON.CO.UK +442080680807 GBR", "Amazon UK", "AMAZON" into a single name like "Amazon".
     """)
+
+    # AI Enhancement Option
+    api_key = st.session_state.api_key
+    if api_key and api_key.strip():
+        col_btn1, col_btn2, col_spacer = st.columns([1, 1, 3])
+        with col_btn1:
+            if st.button("🤖 Improve with AI", help="Use AI to better consolidate similar merchant names"):
+                with st.spinner("Using AI to improve deduplication..."):
+                    try:
+                        from classifier import TransactionClassifier
+                        classifier = TransactionClassifier(api_key, None)
+
+                        # Get unique merchants to improve
+                        df_to_improve = st.session_state.merchant_mapping_df.copy()
+
+                        # Call AI to consolidate
+                        improved_mapping = ai_improve_deduplication(classifier, df_to_improve)
+                        st.session_state.merchant_mapping_df = improved_mapping
+                        st.success("✅ AI deduplication complete! Review the suggestions below.")
+                        st.rerun()
+
+                    except Exception as e:
+                        st.warning(f"⚠️ AI enhancement failed: {str(e)}. Manual editing still available.")
+
+    # Calculate dynamic height based on number of rows (max 70% of viewport)
+    num_rows = len(st.session_state.merchant_mapping_df)
+    table_height = min(35 * num_rows + 38, 700)  # 35px per row + 38px header, max 700px
 
     # Show editable dataframe
     edited_df = st.data_editor(
@@ -303,12 +339,12 @@ def show_merchant_mapping_review():
             ),
             "standardized_merchant": st.column_config.TextColumn(
                 "Standardized Name",
-                help="Edit to standardize merchant names",
-                width="medium"
+                help="Edit to standardize merchant names - remove phone numbers, locations, etc.",
+                width="large"
             )
         },
         hide_index=True,
-        height=400
+        height=table_height
     )
 
     col1, col2 = st.columns([1, 5])
@@ -327,6 +363,73 @@ def show_merchant_mapping_review():
             # Move to category mapping
             st.session_state.stage = 'review_category_mapping'
             st.rerun()
+
+
+def ai_improve_deduplication(classifier, mapping_df):
+    """Use AI to improve merchant deduplication."""
+    # Group similar merchants and ask AI to consolidate
+    merchants = mapping_df['standardized_merchant'].unique().tolist()
+
+    # Batch process in groups of 30
+    batch_size = 30
+    all_improvements = {}
+
+    for i in range(0, len(merchants), batch_size):
+        batch = merchants[i:i+batch_size]
+        batch_text = "\n".join([f"{idx}: {m}" for idx, m in enumerate(batch)])
+
+        prompt = f"""Review these merchant names and consolidate duplicates. Return a JSON mapping where the key is the index number and the value is the best consolidated merchant name.
+
+For example, if you see:
+- "Gett +442080680807"
+- "Gett +441234567890"
+Both should map to just "Gett"
+
+Or if you see:
+- "Google *Chrome Temp"
+- "Google *Gpay Temp"
+- "Google *Youtube Temp"
+All should map to "Google"
+
+Merchants:
+{batch_text}
+
+Return only JSON in format: {{"0": "ConsolidatedName", "1": "ConsolidatedName", ...}}
+Remove phone numbers, location codes, temporary hold indicators, and branch/store numbers."""
+
+        try:
+            response = classifier.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a merchant name deduplication expert. Consolidate similar merchant names into clean, standard names."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=800
+            )
+
+            response_text = response.choices[0].message.content
+            parsed = classifier._parse_json_response(response_text)
+
+            # Map back to merchant names
+            for idx_str, consolidated_name in parsed.items():
+                idx = int(idx_str)
+                if idx < len(batch):
+                    original = batch[idx]
+                    all_improvements[original] = consolidated_name
+
+        except Exception as e:
+            print(f"Error in batch: {e}")
+            continue
+
+    # Apply improvements to mapping_df
+    improved_df = mapping_df.copy()
+    for idx, row in improved_df.iterrows():
+        current_standardized = row['standardized_merchant']
+        if current_standardized in all_improvements:
+            improved_df.at[idx, 'standardized_merchant'] = all_improvements[current_standardized]
+
+    return improved_df
 
 
 def show_category_mapping_review():

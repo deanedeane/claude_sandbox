@@ -50,49 +50,141 @@ class MerchantDeduplicator:
             return self.mapping[merchant_name]
 
         # Basic cleaning
-        cleaned = merchant_name.strip()
+        cleaned = merchant_name.strip().upper()
 
-        # Common patterns to clean up
-        # Remove common prefixes/suffixes
+        # Remove common card processing codes and metadata
+        # Remove country codes (GBR, USA, MEX, IRL, etc.)
+        cleaned = re.sub(r'\s+(GBR|USA|MEX|IRL|CAN|AUS|EUR|NZL|GER|FRA|ESP|ITA)\s*$', '', cleaned, flags=re.IGNORECASE)
+
+        # Remove city/location codes at end (LONDON, NEW YORK, etc.)
+        cleaned = re.sub(r'\s+(LONDON|NEW YORK|MANCHESTER|BIRMINGHAM|EDINBURGH|GLASGOW)\s*', ' ', cleaned, flags=re.IGNORECASE)
+
+        # Remove phone numbers (+44xxx, etc.)
+        cleaned = re.sub(r'\+?\d{10,15}', '', cleaned)
+
+        # Remove reference numbers and transaction IDs
+        cleaned = re.sub(r'\s+\d{6,}', '', cleaned)
+
+        # Remove date patterns (DDMMYY, etc.)
+        cleaned = re.sub(r'\d{2}[A-Z]{3}\d{2}', '', cleaned)
+
+        # Remove common prefixes
         cleaned = re.sub(r'^(WWW\.|HTTP://|HTTPS://)', '', cleaned, flags=re.IGNORECASE)
-        cleaned = re.sub(r'\.(COM|CO\.UK|NET|ORG)$', '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'\.(COM|CO\.UK|NET|ORG)(\s|$)', ' ', cleaned, flags=re.IGNORECASE)
 
-        # Remove location codes and numbers at the end
-        cleaned = re.sub(r'\s+\d+$', '', cleaned)
-        cleaned = re.sub(r'\s+[A-Z]{2,3}\d+$', '', cleaned)
+        # Remove Google temporary hold patterns
+        cleaned = re.sub(r'\s*\*?(CHROME|GPAY|YOUTUBE)\s+TEMP(ORARY)?\s+(HOLD)?\s*', ' GOOGLE ', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'GOOGLE\s+\*', 'GOOGLE ', cleaned, flags=re.IGNORECASE)
 
-        # Title case for readability
-        cleaned = cleaned.title()
+        # Remove card types and payment indicators
+        cleaned = re.sub(r'\s+(VISA|MASTERCARD|AMEX|PAYMENT|PURCHASE|POS)\s*', ' ', cleaned, flags=re.IGNORECASE)
 
-        # Specific known merchants
-        if 'AMAZON' in cleaned.upper():
-            cleaned = 'Amazon'
-        elif 'TESCO' in cleaned.upper():
-            cleaned = 'Tesco'
-        elif 'SAINSBURY' in cleaned.upper():
-            cleaned = "Sainsbury's"
-        elif 'WAITROSE' in cleaned.upper():
-            cleaned = 'Waitrose'
-        elif 'MARKS & SPENCER' in cleaned.upper() or 'M&S' in cleaned.upper():
-            cleaned = 'M&S'
-        elif 'OCADO' in cleaned.upper():
-            cleaned = 'Ocado'
-        elif 'TFL' in cleaned.upper() or 'TRANSPORT FOR LONDON' in cleaned.upper():
-            cleaned = 'TfL'
-        elif 'UBER' in cleaned.upper():
-            cleaned = 'Uber'
-        elif 'PAYMENT RECEIVED' in cleaned.upper():
-            cleaned = 'Payment Received'
-        elif 'PAYPAL' in cleaned.upper():
-            cleaned = 'PayPal'
-        elif 'NETFLIX' in cleaned.upper():
-            cleaned = 'Netflix'
-        elif 'SPOTIFY' in cleaned.upper():
-            cleaned = 'Spotify'
-        elif 'APPLE.COM' in cleaned.upper() or 'APPLE INC' in cleaned.upper():
-            cleaned = 'Apple'
+        # Remove address components
+        cleaned = re.sub(r'\s+\d+\s+[A-Z\s]+ROAD', '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(r'\s+\d+\s+[A-Z\s]+STREET', '', cleaned, flags=re.IGNORECASE)
 
-        return cleaned
+        # Remove postcode patterns (EC1 2NZ, SW1A 1AA, etc.)
+        cleaned = re.sub(r'\s+[A-Z]{1,2}\d{1,2}[A-Z]?\s*\d[A-Z]{2}', '', cleaned)
+
+        # Remove store numbers and branch codes (STORE 1234, #123, etc.)
+        cleaned = re.sub(r'\s+(STORE|BRANCH|UNIT|#)\s*\d+', '', cleaned, flags=re.IGNORECASE)
+
+        # Clean up extra spaces
+        cleaned = ' '.join(cleaned.split())
+        cleaned = cleaned.strip()
+
+        # Specific known merchants - expanded list
+        upper = cleaned.upper()
+
+        # Major retailers
+        if 'AMAZON' in upper:
+            return 'Amazon'
+        elif 'TESCO' in upper:
+            return 'Tesco'
+        elif 'SAINSBURY' in upper:
+            return "Sainsbury's"
+        elif 'WAITROSE' in upper:
+            return 'Waitrose'
+        elif 'MARKS & SPENCER' in upper or 'M&S' in upper or 'M & S' in upper:
+            return 'M&S'
+        elif 'OCADO' in upper:
+            return 'Ocado'
+        elif 'ASDA' in upper:
+            return 'Asda'
+        elif 'ALDI' in upper:
+            return 'Aldi'
+        elif 'LIDL' in upper:
+            return 'Lidl'
+        elif 'MORRISONS' in upper:
+            return 'Morrisons'
+        elif 'CO-OP' in upper or 'COOP' in upper or 'CO OP' in upper:
+            return 'Co-op'
+
+        # Transport
+        elif 'TFL' in upper or 'TRANSPORT FOR LONDON' in upper:
+            return 'TfL'
+        elif 'UBER' in upper:
+            return 'Uber'
+        elif 'TRAINLINE' in upper:
+            return 'Trainline'
+        elif 'CITYMAPPER' in upper:
+            return 'Citymapper'
+
+        # Tech/Services
+        elif 'GOOGLE' in upper or 'G.CO' in upper:
+            # Handle specific Google services
+            if 'YOUTUBE' in upper:
+                return 'YouTube'
+            else:
+                return 'Google'
+        elif 'APPLE' in upper:
+            return 'Apple'
+        elif 'SPOTIFY' in upper:
+            return 'Spotify'
+        elif 'NETFLIX' in upper:
+            return 'Netflix'
+        elif 'AMAZON PRIME' in upper:
+            return 'Amazon Prime'
+        elif 'PAYPAL' in upper:
+            return 'PayPal'
+
+        # Coffee/Food chains
+        elif 'STARBUCKS' in upper:
+            return 'Starbucks'
+        elif 'COSTA' in upper and 'COFFEE' in upper:
+            return 'Costa Coffee'
+        elif 'PRET' in upper or 'PRET A MANGER' in upper:
+            return 'Pret'
+        elif 'GREGGS' in upper:
+            return 'Greggs'
+        elif 'GAILS' in upper:
+            return 'Gails'
+        elif 'GETT' in upper:
+            return 'Gett'
+        elif 'FORZA' in upper:
+            return 'Forza'
+
+        # Gyms/Fitness
+        elif 'PUREGYM' in upper or 'PURE GYM' in upper:
+            return 'PureGym'
+        elif 'GYMBOX' in upper:
+            return 'Gymbox'
+
+        # Utilities/Bills
+        elif 'PAYMENT RECEIVED' in upper or 'PAYMENT THANK YOU' in upper:
+            return 'Payment Received'
+        elif 'BRITISH GAS' in upper:
+            return 'British Gas'
+        elif 'THAMES WATER' in upper:
+            return 'Thames Water'
+
+        # If no specific match, clean up and title case
+        # Remove remaining special characters but keep basic ones
+        cleaned = re.sub(r'[^\w\s\-&\']', ' ', cleaned)
+        cleaned = ' '.join(cleaned.split())
+
+        # Title case
+        return cleaned.title()
 
     def build_mapping_dataframe(self, unique_merchants):
         """
