@@ -4,11 +4,14 @@ A web-based tool to analyze household spending from Monzo and Amex transaction e
 
 ## Features
 
-- **Multi-account support**: Import CSVs from 5 accounts (Deane Monzo, Thea Monzo, Joint Monzo, Gold Amex, BA Amex)
+- **Multi-account support**: Import files from 5 accounts (Deane Monzo, Thea Monzo, Joint Monzo, Gold Amex, BA Amex)
+- **Multiple file formats**: Supports both CSV and Excel (XLS/XLSX) files
+- **Excel sheet selection**: Automatically detects multiple sheets and lets you choose the right one
 - **Merchant deduplication**: Standardize merchant names (e.g., "AMAZON.CO.UK" → "Amazon")
 - **Smart categorization**: AI-powered category assignment using OpenAI
 - **Mapping persistence**: Save and reuse your deduplication and category mappings
 - **Internal transfer detection**: Automatically identifies and excludes transfers between accounts
+- **Date filtering**: Filter analysis by date range to focus on specific months or periods
 - **Comprehensive analysis**: View spending by category, account, merchant, and month
 - **Interactive editing**: Edit merchant names and categories in the web interface
 - **Export capabilities**: Download processed data and mappings for future use
@@ -50,26 +53,31 @@ The application will open in your browser at `http://localhost:8501`
 ### First Time Setup
 
 1. **Upload Transaction Files**
-   - Export your transactions as CSV from Monzo and Amex
-   - Upload the CSV files for each account in the sidebar
+   - Export your transactions as CSV or Excel from Monzo and Amex
+   - Upload the files for each account in the sidebar (CSV, XLS, or XLSX)
    - You don't need to upload all 5 accounts - just the ones you have data for
 
-2. **Review Merchant Deduplication**
+2. **Select Excel Sheets** (if applicable)
+   - If any Excel file has multiple sheets, you'll be prompted to select which one contains your transactions
+   - The app auto-detects this and shows you the available sheets
+
+3. **Review Merchant Deduplication**
    - The system automatically suggests standardized merchant names
    - Edit any that don't look correct
    - This consolidates variations like "AMAZON.CO.UK", "Amazon UK" → "Amazon"
 
-3. **Review Category Mapping**
+4. **Review Category Mapping**
    - AI will automatically categorize merchants using your OpenAI API key
    - Review and edit categories as needed
    - Available categories: Groceries, Eating out, Transport, Shopping, Entertainment, Income, Bills, Holidays, Fitness, Personal care, General, Transfers, Uncategorized
 
-4. **View Analysis**
+5. **View Analysis**
+   - Use the date range filter to focus on specific time periods (e.g., single month)
    - See spending summaries by category, account, and merchant
    - View monthly trends if data spans multiple months
    - Browse all transactions in detail
 
-5. **Export Mappings**
+6. **Export Mappings**
    - Download `merchant_mapping.csv` - your merchant deduplication rules
    - Download `category_mapping.csv` - your category assignments
    - Download `transactions_analyzed.csv` - all processed transactions
@@ -85,14 +93,20 @@ The application will open in your browser at `http://localhost:8501`
 
 ## File Formats
 
-### Expected CSV Formats
+### Supported File Types
+- **CSV** (.csv)
+- **Excel** (.xlsx, .xls)
 
-#### Monzo CSV
+The app automatically detects the format and parses accordingly. For Excel files with multiple sheets, you'll be prompted to select the correct sheet.
+
+### Expected Data Formats
+
+#### Monzo (CSV or Excel)
 - Required columns: `Date`, `Description` (or `Name`), `Amount`, `Type`
 - Optional columns: `Category`, `Notes and #tags`
 - Date format: DD/MM/YYYY
 
-#### Amex CSV
+#### Amex (CSV or Excel)
 - Required columns: `Date`, `Description`, `Amount`, `Account #`
 - Date format: DD/MM/YYYY
 
@@ -149,13 +163,17 @@ The system uses these standard categories:
 
 1. **Save your mappings**: Always download and save the mapping files at the end. They make future months much faster!
 
-2. **Review AI suggestions**: The AI is pretty good but check its category assignments, especially for ambiguous merchants.
+2. **Use Excel files**: If you have both CSV and Excel options, Excel files often work better as they preserve formatting and can contain multiple months in different sheets.
 
-3. **Standardize merchants consistently**: When deduplicating, choose a consistent naming style (e.g., always "Sainsbury's" not "Sainsburys").
+3. **Filter by date**: Use the date range filter to analyze specific months. This is perfect for monthly budget reviews!
 
-4. **Upload all accounts**: For best results, upload transactions from all your active accounts to get a complete picture.
+4. **Review AI suggestions**: The AI is pretty good but check its category assignments, especially for ambiguous merchants.
 
-5. **Monthly analysis**: Run this monthly for best tracking. The mapping files build up knowledge over time.
+5. **Standardize merchants consistently**: When deduplicating, choose a consistent naming style (e.g., always "Sainsbury's" not "Sainsburys").
+
+6. **Upload all accounts**: For best results, upload transactions from all your active accounts to get a complete picture.
+
+7. **Monthly analysis**: Run this monthly for best tracking. The mapping files build up knowledge over time.
 
 ## Troubleshooting
 

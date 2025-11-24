@@ -30,6 +30,10 @@ if 'merchant_mapping_df' not in st.session_state:
     st.session_state.merchant_mapping_df = None
 if 'category_mapping_df' not in st.session_state:
     st.session_state.category_mapping_df = None
+if 'uploaded_files' not in st.session_state:
+    st.session_state.uploaded_files = {}
+if 'sheet_selections' not in st.session_state:
+    st.session_state.sheet_selections = {}
 
 
 def main():
@@ -41,11 +45,11 @@ def main():
         st.header("📁 Upload Files")
 
         st.subheader("Transaction Files")
-        deane_monzo = st.file_uploader("Deane Monzo CSV", type=['csv'], key='deane_monzo')
-        thea_monzo = st.file_uploader("Thea Monzo CSV", type=['csv'], key='thea_monzo')
-        joint_monzo = st.file_uploader("Joint Monzo CSV", type=['csv'], key='joint_monzo')
-        gold_amex = st.file_uploader("Gold Amex CSV", type=['csv'], key='gold_amex')
-        ba_amex = st.file_uploader("BA Amex CSV", type=['csv'], key='ba_amex')
+        deane_monzo = st.file_uploader("Deane Monzo", type=['csv', 'xlsx', 'xls'], key='deane_monzo')
+        thea_monzo = st.file_uploader("Thea Monzo", type=['csv', 'xlsx', 'xls'], key='thea_monzo')
+        joint_monzo = st.file_uploader("Joint Monzo", type=['csv', 'xlsx', 'xls'], key='joint_monzo')
+        gold_amex = st.file_uploader("Gold Amex", type=['csv', 'xlsx', 'xls'], key='gold_amex')
+        ba_amex = st.file_uploader("BA Amex", type=['csv', 'xlsx', 'xls'], key='ba_amex')
 
         st.markdown("---")
         st.subheader("Optional: Previous Mappings")
@@ -86,6 +90,8 @@ def main():
     # Main content area
     if st.session_state.stage == 'upload':
         show_welcome_screen()
+    elif st.session_state.stage == 'select_sheets':
+        show_sheet_selection()
     elif st.session_state.stage == 'review_merchant_mapping':
         show_merchant_mapping_review()
     elif st.session_state.stage == 'review_category_mapping':
@@ -95,23 +101,27 @@ def main():
 
 
 def show_welcome_screen():
-    st.info("👈 Upload your transaction CSV files and click 'Process Transactions' to get started")
+    st.info("👈 Upload your transaction files (CSV or Excel) and click 'Process Transactions' to get started")
 
     with st.expander("ℹ️ How to use this tool"):
         st.markdown("""
         ### Step-by-step guide:
 
-        1. **Upload transaction files** for your accounts (CSV format)
-        2. *Optional:* Upload previous mapping files to reuse your categorization rules
-        3. **Review merchant deduplication** - standardize merchant names (e.g., "AMAZON.CO.UK" → "Amazon")
-        4. **Review category mapping** - assign categories to each merchant
-        5. **View analysis** - see spending breakdown by category, account, and merchant
-        6. **Export mappings** - download mapping files to reuse next time
+        1. **Upload transaction files** for your accounts (CSV or Excel format)
+        2. *If using Excel:* Select which sheet contains your transaction data (if multiple sheets)
+        3. *Optional:* Upload previous mapping files to reuse your categorization rules
+        4. **Review merchant deduplication** - standardize merchant names (e.g., "AMAZON.CO.UK" → "Amazon")
+        5. **Review category mapping** - assign categories to each merchant
+        6. **View analysis** - see spending breakdown by category, account, and merchant
+        7. **Filter by date** - analyze spending for specific time periods (e.g., single month)
+        8. **Export mappings** - download mapping files to reuse next time
 
         ### Tips:
         - You can upload files for any subset of accounts (don't need all 5)
+        - Both CSV and Excel (XLS/XLSX) files are supported
         - Merchant deduplication happens first to consolidate variations of the same merchant
         - Category mapping happens second, using your previous mappings + AI for new merchants
+        - Use the date filter to focus on specific months or periods
         - Save your mapping files at the end to make next month's analysis much faster!
         """)
 
@@ -126,17 +136,107 @@ def process_transactions(deane_monzo, thea_monzo, joint_monzo, gold_amex, ba_ame
         st.error("Please upload at least one transaction file")
         return
 
+    try:
+        parser = TransactionParser()
+
+        # Store uploaded files and check for Excel with multiple sheets
+        uploaded_files_info = {}
+        needs_sheet_selection = False
+
+        file_map = {
+            'deane_monzo': deane_monzo,
+            'thea_monzo': thea_monzo,
+            'joint_monzo': joint_monzo,
+            'gold_amex': gold_amex,
+            'ba_amex': ba_amex
+        }
+
+        for account_key, file in file_map.items():
+            if file is None:
+                continue
+
+            file_content = file.read()
+            file_type = file.name.split('.')[-1].lower()
+
+            # Check if Excel file has multiple sheets
+            if file_type in ['xlsx', 'xls']:
+                sheets = parser.get_excel_sheets(file_content)
+                if len(sheets) > 1:
+                    needs_sheet_selection = True
+                    uploaded_files_info[account_key] = {
+                        'content': file_content,
+                        'type': file_type,
+                        'sheets': sheets,
+                        'selected_sheet': sheets[0]  # Default to first sheet
+                    }
+                else:
+                    uploaded_files_info[account_key] = {
+                        'content': file_content,
+                        'type': file_type,
+                        'sheets': sheets,
+                        'selected_sheet': sheets[0]
+                    }
+            else:
+                uploaded_files_info[account_key] = {
+                    'content': file_content,
+                    'type': file_type,
+                    'sheets': None,
+                    'selected_sheet': None
+                }
+
+        # Store in session state
+        st.session_state.uploaded_files = uploaded_files_info
+        st.session_state.merchant_mapping_file = merchant_mapping_file
+        st.session_state.category_mapping_file = category_mapping_file
+        st.session_state.api_key = api_key
+
+        # If we need sheet selection, go to that stage, otherwise process directly
+        if needs_sheet_selection:
+            st.session_state.stage = 'select_sheets'
+            st.rerun()
+        else:
+            process_with_selected_sheets()
+
+    except Exception as e:
+        st.error(f"Error processing files: {str(e)}")
+
+
+def show_sheet_selection():
+    """Show Excel sheet selection interface."""
+    st.header("📋 Select Excel Sheets")
+
+    st.info("Some of your Excel files have multiple sheets. Please select which sheet contains the transaction data.")
+
+    # Show selection dropdowns for files with multiple sheets
+    for account_key, file_info in st.session_state.uploaded_files.items():
+        if file_info['sheets'] and len(file_info['sheets']) > 1:
+            account_name = account_key.replace('_', ' ').title()
+            selected = st.selectbox(
+                f"{account_name} - Select Sheet:",
+                options=file_info['sheets'],
+                index=0,
+                key=f"sheet_select_{account_key}"
+            )
+            st.session_state.uploaded_files[account_key]['selected_sheet'] = selected
+
+    if st.button("✅ Continue with Selected Sheets", type="primary"):
+        process_with_selected_sheets()
+
+
+def process_with_selected_sheets():
+    """Process transactions with selected sheets."""
     with st.spinner("Processing transactions..."):
         try:
-            # Step 1: Load and parse transactions
             parser = TransactionParser()
-            files_dict = {
-                'deane_monzo': deane_monzo.read() if deane_monzo else None,
-                'thea_monzo': thea_monzo.read() if thea_monzo else None,
-                'joint_monzo': joint_monzo.read() if joint_monzo else None,
-                'gold_amex': gold_amex.read() if gold_amex else None,
-                'ba_amex': ba_amex.read() if ba_amex else None,
-            }
+
+            # Build files_dict with proper structure
+            files_dict = {}
+            for account_key, file_info in st.session_state.uploaded_files.items():
+                files_dict[account_key] = (
+                    file_info['content'],
+                    file_info['type'],
+                    file_info['selected_sheet']
+                )
 
             df = parser.load_all_transactions(files_dict)
 
@@ -149,11 +249,11 @@ def process_transactions(deane_monzo, thea_monzo, joint_monzo, gold_amex, ba_ame
 
             st.session_state.transactions_df = df
 
-            # Step 2: Load or create merchant mapping
+            # Load or create merchant mapping
             existing_merchant_mapping = None
-            if merchant_mapping_file:
+            if st.session_state.merchant_mapping_file:
                 existing_merchant_mapping = MerchantDeduplicator.load_mapping_from_csv(
-                    merchant_mapping_file.read()
+                    st.session_state.merchant_mapping_file.read()
                 )
 
             deduplicator = MerchantDeduplicator(existing_merchant_mapping)
@@ -163,15 +263,14 @@ def process_transactions(deane_monzo, thea_monzo, joint_monzo, gold_amex, ba_ame
             st.session_state.merchant_mapping_df = merchant_mapping_df
             st.session_state.deduplicator = deduplicator
 
-            # Step 3: Load existing category mapping if provided
-            if category_mapping_file:
+            # Load existing category mapping if provided
+            if st.session_state.category_mapping_file:
                 st.session_state.existing_category_mapping = TransactionClassifier.load_mapping_from_csv(
-                    category_mapping_file.read()
+                    st.session_state.category_mapping_file.read()
                 )
             else:
                 st.session_state.existing_category_mapping = None
 
-            st.session_state.api_key = api_key
             st.session_state.stage = 'review_merchant_mapping'
 
             st.success(f"✅ Loaded {len(df)} transactions!")
@@ -313,7 +412,57 @@ def show_analysis():
     st.header("📊 Spending Analysis")
 
     df = st.session_state.transactions_df
-    analyzer = SpendingAnalyzer(df)
+
+    # Date filtering
+    st.subheader("📅 Date Range Filter")
+
+    min_date = df['date'].min().date()
+    max_date = df['date'].max().date()
+
+    col1, col2, col3 = st.columns([2, 2, 1])
+
+    with col1:
+        start_date = st.date_input(
+            "Start Date",
+            value=min_date,
+            min_value=min_date,
+            max_value=max_date,
+            key='start_date_filter'
+        )
+
+    with col2:
+        end_date = st.date_input(
+            "End Date",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date,
+            key='end_date_filter'
+        )
+
+    with col3:
+        st.markdown("<br>", unsafe_allow_html=True)  # Spacing
+        if st.button("Reset Dates"):
+            st.session_state.start_date_filter = min_date
+            st.session_state.end_date_filter = max_date
+            st.rerun()
+
+    # Filter dataframe by date range
+    df_filtered = df[
+        (df['date'].dt.date >= start_date) &
+        (df['date'].dt.date <= end_date)
+    ].copy()
+
+    if df_filtered.empty:
+        st.warning("No transactions found in the selected date range.")
+        return
+
+    # Show number of transactions in filtered range
+    st.caption(f"Showing {len(df_filtered)} transactions from {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}")
+
+    st.markdown("---")
+
+    # Use filtered dataframe for analysis
+    analyzer = SpendingAnalyzer(df_filtered)
 
     # Summary statistics
     summary = analyzer.get_summary_stats()
@@ -426,14 +575,14 @@ def show_analysis():
         )
 
     with col3:
-        # Export all transactions
-        transactions_csv = df.to_csv(index=False)
+        # Export all transactions (use original df, not filtered)
+        transactions_csv = st.session_state.transactions_df.to_csv(index=False)
         st.download_button(
             label="📥 Download All Transactions",
             data=transactions_csv,
             file_name="transactions_analyzed.csv",
             mime="text/csv",
-            help="All transactions with standardized merchants and categories"
+            help="All transactions with standardized merchants and categories (full dataset)"
         )
 
 
