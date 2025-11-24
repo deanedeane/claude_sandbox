@@ -439,64 +439,158 @@ def show_category_mapping_review():
     df = st.session_state.transactions_df
     api_key = st.session_state.api_key
 
+    # Initialize custom categories in session state if not present
+    if 'custom_categories' not in st.session_state:
+        st.session_state.custom_categories = list(TransactionClassifier.STANDARD_CATEGORIES)
+
     # Build category mapping dataframe
     existing_mapping = st.session_state.existing_category_mapping
 
-    # Get unique merchants
-    unique_merchants = sorted(df['merchant'].unique())
+    # Get unique merchants (exclude bank transfers)
+    unique_merchants = sorted(df[df['is_bank_transfer'] == False]['merchant'].unique())
 
-    # Build mapping data
+    # Build mapping data with raw description examples
     mapping_data = []
     existing_dict = {}
     if existing_mapping is not None and not existing_mapping.empty:
         for _, row in existing_mapping.iterrows():
             existing_dict[row['merchant']] = row['category']
+            # Add category to custom list if not already there
+            if pd.notna(row['category']) and row['category'] not in st.session_state.custom_categories:
+                st.session_state.custom_categories.append(row['category'])
 
     for merchant in unique_merchants:
         category = existing_dict.get(merchant, None)
+        # Get a sample raw description for this merchant
+        sample_raw = df[df['merchant'] == merchant]['raw_description'].iloc[0]
         mapping_data.append({
             'merchant': merchant,
-            'category': category if category else ''
+            'raw_description': sample_raw,
+            'category': category if category else '',
+            'is_mapped': category is not None and category != ''
         })
 
     category_mapping_df = pd.DataFrame(mapping_data)
 
-    # Check if we need AI classification
-    unclassified = category_mapping_df[
-        (category_mapping_df['category'].isna()) | (category_mapping_df['category'] == '')
-    ]
+    # Split into mapped and unmapped
+    mapped_df = category_mapping_df[category_mapping_df['is_mapped']].copy()
+    unmapped_df = category_mapping_df[~category_mapping_df['is_mapped']].copy()
 
-    # Only use AI if we have an API key AND there are unclassified merchants
-    if len(unclassified) > 0:
-        if api_key and api_key.strip():  # Check if API key exists and is not empty
-            st.info(f"🤖 Found {len(unclassified)} merchants without categories. Using AI to classify...")
-
+    # AI classification for unmapped merchants
+    if len(unmapped_df) > 0 and api_key and api_key.strip():
+        if st.button("🤖 Classify New Merchants with AI"):
             with st.spinner("Classifying with AI..."):
                 try:
-                    # Initialize classifier only when we need it
                     classifier = TransactionClassifier(api_key, existing_mapping)
-                    merchants_to_classify = unclassified['merchant'].tolist()
-                    classifications = classifier.classify_merchants(merchants_to_classify)
+                    merchants_with_raw = unmapped_df[['merchant', 'raw_description']].to_dict('records')
+                    classifications = classifier.classify_merchants(merchants_with_raw)
 
-                    # Update mapping with AI classifications
+                    # Update unmapped_df with AI classifications
                     for merchant, category in classifications.items():
-                        category_mapping_df.loc[
-                            category_mapping_df['merchant'] == merchant,
+                        unmapped_df.loc[
+                            unmapped_df['merchant'] == merchant,
                             'category'
                         ] = category
 
                     st.success("✅ AI classification complete!")
+                    st.rerun()
 
                 except Exception as e:
                     st.warning(f"⚠️ AI classification failed: {str(e)}. Please categorize manually.")
+
+    # Category management section
+    with st.expander("⚙️ Manage Categories"):
+        st.subheader("Current Categories")
+
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            new_category = st.text_input("Add new category:", key='new_category_input')
+        with col2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("➕ Add"):
+                if new_category and new_category not in st.session_state.custom_categories:
+                    st.session_state.custom_categories.append(new_category)
+                    st.success(f"Added category: {new_category}")
+                    st.rerun()
+
+        # Show current categories
+        st.write("**Available categories:**")
+        categories_text = ", ".join(sorted(st.session_state.custom_categories))
+        st.text(categories_text)
+
+    # Tabs for mapped vs unmapped
+    if len(mapped_df) > 0 and len(unmapped_df) > 0:
+        tab1, tab2 = st.tabs([
+            f"✅ Already Mapped ({len(mapped_df)})",
+            f"🆕 New Merchants ({len(unmapped_df)})"
+        ])
+    else:
+        tab1 = tab2 = None
+
+    # Show already mapped merchants
+    if len(mapped_df) > 0:
+        if tab1:
+            with tab1:
+                st.info("These merchants were mapped from your uploaded file. Review and edit if needed.")
+                edited_mapped_df = show_category_editor(mapped_df, "mapped")
         else:
-            st.warning(f"⚠️ Found {len(unclassified)} merchants without categories. Add your OpenAI API key in the sidebar to use AI classification, or categorize manually below.")
+            st.info("These merchants were mapped from your uploaded file. Review and edit if needed.")
+            edited_mapped_df = show_category_editor(mapped_df, "mapped")
+    else:
+        edited_mapped_df = pd.DataFrame()
 
-    # Show editable dataframe
-    st.info("Review and edit category assignments below. Changes are saved when you click 'Confirm & Continue'.")
+    # Show new merchants
+    if len(unmapped_df) > 0:
+        if tab2:
+            with tab2:
+                st.info("These are new merchants. AI has suggested categories, but please review and edit.")
+                edited_unmapped_df = show_category_editor(unmapped_df, "unmapped")
+        else:
+            st.info("These are new merchants. Assign categories below.")
+            edited_unmapped_df = show_category_editor(unmapped_df, "unmapped")
+    else:
+        edited_unmapped_df = pd.DataFrame()
 
-    edited_category_df = st.data_editor(
-        category_mapping_df,
+    # Combine both dataframes
+    if len(edited_mapped_df) > 0 and len(edited_unmapped_df) > 0:
+        final_mapping_df = pd.concat([edited_mapped_df, edited_unmapped_df], ignore_index=True)
+    elif len(edited_mapped_df) > 0:
+        final_mapping_df = edited_mapped_df
+    else:
+        final_mapping_df = edited_unmapped_df
+
+    st.markdown("---")
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        if st.button("✅ Confirm & Continue", type="primary"):
+            # Apply category mapping
+            mapping_dict = {}
+            for _, row in final_mapping_df.iterrows():
+                if pd.notna(row['category']) and row['category']:
+                    mapping_dict[row['merchant']] = row['category']
+
+            # Apply to non-bank-transfer transactions
+            for merchant, category in mapping_dict.items():
+                df.loc[(df['merchant'] == merchant) & (df['is_bank_transfer'] == False), 'category'] = category
+
+            # Bank transfers get 'Transfers' category
+            df.loc[df['is_bank_transfer'] == True, 'category'] = 'Transfers'
+
+            # Fill any remaining with 'Uncategorized'
+            df['category'] = df['category'].fillna('Uncategorized')
+
+            # Store final mapping for export
+            st.session_state.category_mapping_df = final_mapping_df[['merchant', 'category']]
+            st.session_state.transactions_df = df
+
+            st.session_state.stage = 'analysis'
+            st.rerun()
+
+
+def show_category_editor(df, key_suffix):
+    """Show category editor with raw descriptions."""
+    edited_df = st.data_editor(
+        df[['merchant', 'raw_description', 'category']],
         use_container_width=True,
         num_rows="fixed",
         column_config={
@@ -504,42 +598,26 @@ def show_category_mapping_review():
                 "Merchant",
                 help="Standardized merchant name",
                 disabled=True,
+                width="medium"
+            ),
+            "raw_description": st.column_config.TextColumn(
+                "Raw Description",
+                help="Original transaction description",
+                disabled=True,
                 width="large"
             ),
             "category": st.column_config.SelectboxColumn(
                 "Category",
-                help="Select category for this merchant",
-                options=TransactionClassifier.STANDARD_CATEGORIES,
+                help="Type to search and select category",
+                options=st.session_state.custom_categories,
                 width="medium"
             )
         },
         hide_index=True,
-        height=400
+        height=min(400, 35 * len(df) + 38),
+        key=f'category_editor_{key_suffix}'
     )
-
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        if st.button("✅ Confirm & Continue", type="primary"):
-            st.session_state.category_mapping_df = edited_category_df
-
-            # Apply category mapping manually
-            mapping_dict = {}
-            for _, row in edited_category_df.iterrows():
-                if pd.notna(row['category']) and row['category']:
-                    mapping_dict[row['merchant']] = row['category']
-
-            # Apply mapping to transactions
-            for merchant, category in mapping_dict.items():
-                df.loc[df['merchant'] == merchant, 'category'] = category
-
-            # Fill any remaining with 'Uncategorized'
-            df['category'] = df['category'].fillna('Uncategorized')
-
-            st.session_state.transactions_df = df
-
-            # Move to analysis
-            st.session_state.stage = 'analysis'
-            st.rerun()
+    return edited_df
 
 
 def show_analysis():

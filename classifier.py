@@ -48,16 +48,25 @@ class TransactionClassifier:
         Classify a list of merchants using OpenAI.
 
         Args:
-            merchants: List of standardized merchant names
+            merchants: List of dicts with 'merchant' and 'raw_description' keys,
+                      OR list of merchant name strings (for backward compatibility)
             batch_size: Number of merchants to classify per API call
 
         Returns:
-            Dictionary mapping merchant to category
+            Dictionary mapping merchant name to category
         """
         results = {}
 
+        # Normalize input format
+        if merchants and isinstance(merchants[0], dict):
+            # New format with raw descriptions
+            merchant_data = merchants
+        else:
+            # Old format - just merchant names
+            merchant_data = [{'merchant': m, 'raw_description': m} for m in merchants]
+
         # Filter out merchants already in mapping
-        to_classify = [m for m in merchants if m not in self.mapping]
+        to_classify = [m for m in merchant_data if m['merchant'] not in self.mapping]
 
         if not to_classify:
             return self.mapping.copy()
@@ -74,10 +83,15 @@ class TransactionClassifier:
 
     def _classify_batch(self, merchants):
         """Classify a batch of merchants."""
-        # Create numbered list for the prompt
-        merchant_list = "\n".join([f"{i}: {m}" for i, m in enumerate(merchants)])
+        # Create numbered list for the prompt with both standardized and raw descriptions
+        merchant_list = "\n".join([
+            f"{i}: {m['merchant']} (raw: {m['raw_description']})"
+            for i, m in enumerate(merchants)
+        ])
 
         prompt = f"""Classify these merchants/transactions into spending categories.
+For each merchant, you're given both the standardized name and the raw transaction description.
+Use both to determine the best category.
 
 Available categories:
 {', '.join(self.STANDARD_CATEGORIES)}
@@ -123,14 +137,14 @@ Respond with ONLY a JSON object mapping the number to category. Example format:
             for idx_str, category in classification.items():
                 idx = int(idx_str)
                 if idx < len(merchants):
-                    results[merchants[idx]] = category
+                    results[merchants[idx]['merchant']] = category
 
             return results
 
         except Exception as e:
             print(f"Error classifying batch: {e}")
             # Return default categories for failed batch
-            return {m: 'Uncategorized' for m in merchants}
+            return {m['merchant']: 'Uncategorized' for m in merchants}
 
     def _parse_json_response(self, response_text):
         """Extract and parse JSON from response text."""

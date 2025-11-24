@@ -28,13 +28,21 @@ class TransactionParser:
             if pd.isna(row.get('Date')) or pd.isna(row.get('Amount')):
                 continue
 
+            raw_desc = str(row.get('Description', row.get('Name', '')))
+            trans_type = str(row.get('Type', 'Unknown'))
+
+            # Identify bank transfers
+            is_bank_transfer = 'transfer' in trans_type.lower() or trans_type.lower() in ['bank transfer', 'transfer']
+
             transactions.append({
                 'date': pd.to_datetime(row['Date'], format='%d/%m/%Y'),
-                'description': str(row.get('Description', row.get('Name', ''))),
+                'raw_description': raw_desc,
+                'description': raw_desc,  # Will become standardized merchant name later
                 'amount': float(row['Amount']),
                 'category': row.get('Category') if pd.notna(row.get('Category')) else None,
                 'account': account_name,
-                'transaction_type': str(row.get('Type', 'Unknown')),
+                'transaction_type': trans_type,
+                'is_bank_transfer': is_bank_transfer,
             })
 
         return transactions
@@ -57,11 +65,13 @@ class TransactionParser:
 
             transactions.append({
                 'date': pd.to_datetime(row['Date'], format='%d/%m/%Y'),
-                'description': description,
+                'raw_description': description,
+                'description': description,  # Will become standardized merchant name later
                 'amount': amount,
                 'category': None,  # Amex doesn't provide categories
                 'account': account_name,
                 'transaction_type': 'Payment' if is_payment else 'Card payment',
+                'is_bank_transfer': is_payment,  # Payments are bank transfers for Amex
             })
 
         return transactions
@@ -112,13 +122,21 @@ class TransactionParser:
             if pd.isna(row.get('Date')) or pd.isna(row.get('Amount')):
                 continue
 
+            raw_desc = str(row.get('Description', row.get('Name', '')))
+            trans_type = str(row.get('Type', 'Unknown'))
+
+            # Identify bank transfers
+            is_bank_transfer = 'transfer' in trans_type.lower() or trans_type.lower() in ['bank transfer', 'transfer']
+
             transactions.append({
                 'date': pd.to_datetime(row['Date'], format='%d/%m/%Y'),
-                'description': str(row.get('Description', row.get('Name', ''))),
+                'raw_description': raw_desc,
+                'description': raw_desc,  # Will become standardized merchant name later
                 'amount': float(row['Amount']),
                 'category': row.get('Category') if pd.notna(row.get('Category')) else None,
                 'account': account_name,
-                'transaction_type': str(row.get('Type', 'Unknown')),
+                'transaction_type': trans_type,
+                'is_bank_transfer': is_bank_transfer,
             })
 
         return transactions
@@ -139,11 +157,13 @@ class TransactionParser:
 
             transactions.append({
                 'date': pd.to_datetime(row['Date'], format='%d/%m/%Y'),
-                'description': description,
+                'raw_description': description,
+                'description': description,  # Will become standardized merchant name later
                 'amount': amount,
                 'category': None,  # Amex doesn't provide categories
                 'account': account_name,
                 'transaction_type': 'Payment' if is_payment else 'Card payment',
+                'is_bank_transfer': is_payment,  # Payments are bank transfers for Amex
             })
 
         return transactions

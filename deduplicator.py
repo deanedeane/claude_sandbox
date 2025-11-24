@@ -24,15 +24,19 @@ class MerchantDeduplicator:
     def extract_unique_merchants(self, df):
         """
         Extract unique merchant names from transactions.
+        Only extracts from card transactions, not bank transfers.
 
         Args:
-            df: DataFrame with 'description' column
+            df: DataFrame with 'description' and 'is_bank_transfer' columns
 
         Returns:
             List of unique merchant names
         """
+        # Filter to only card transactions (not bank transfers)
+        card_transactions = df[df['is_bank_transfer'] == False]
+
         # Get unique descriptions (raw merchant names)
-        unique = df['description'].dropna().unique().tolist()
+        unique = card_transactions['description'].dropna().unique().tolist()
         return sorted(unique)
 
     def auto_standardize(self, merchant_name):
@@ -295,9 +299,10 @@ class MerchantDeduplicator:
     def apply_mapping(self, df, mapping_df):
         """
         Apply merchant standardization to transaction DataFrame.
+        Only applies to card transactions, bank transfers use raw description.
 
         Args:
-            df: Transaction DataFrame with 'description' column
+            df: Transaction DataFrame with 'description' and 'is_bank_transfer' columns
             mapping_df: Mapping DataFrame with 'raw_merchant' and 'standardized_merchant' columns
 
         Returns:
@@ -308,11 +313,13 @@ class MerchantDeduplicator:
         for _, row in mapping_df.iterrows():
             mapping_dict[row['raw_merchant']] = row['standardized_merchant']
 
-        # Apply mapping
-        df['merchant'] = df['description'].map(mapping_dict)
-
-        # Fill any missing with original description
-        df['merchant'] = df['merchant'].fillna(df['description'])
+        # Apply mapping only to card transactions
+        # For bank transfers, just use the description as-is
+        df['merchant'] = df.apply(
+            lambda row: row['description'] if row['is_bank_transfer']
+                       else mapping_dict.get(row['description'], row['description']),
+            axis=1
+        )
 
         return df
 
