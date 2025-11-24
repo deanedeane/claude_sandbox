@@ -107,6 +107,8 @@ def main():
         show_merchant_category_mapping()
     elif st.session_state.stage == 'review_transaction_categories':
         show_transaction_category_review()
+    elif st.session_state.stage == 'review_by_category':
+        show_category_based_review()
     elif st.session_state.stage == 'analysis':
         show_analysis()
 
@@ -713,8 +715,8 @@ def show_transaction_category_review():
             df = parser.identify_internal_transfers(df)
             st.session_state.transactions_df = df
 
-            # Move to analysis
-            st.session_state.stage = 'analysis'
+            # Move to category-based review
+            st.session_state.stage = 'review_by_category'
             st.rerun()
 
 
@@ -777,24 +779,199 @@ def show_transaction_editor(df, key_suffix):
     return edited_df
 
 
+def show_category_based_review():
+    """Show transactions grouped by category for final review and editing."""
+    st.header("📋 Step 4: Review Transactions by Category")
+
+    st.info("""
+    Final review of all transactions grouped by category.
+    Within each category, transactions are ordered by merchant for easy scanning.
+    You can edit both category and merchant for individual transactions.
+    """)
+
+    df = st.session_state.transactions_df.copy()
+
+    # Exclude bank transfers and internal transfers from this view
+    df_review = df[(df['is_bank_transfer'] == False) & (df['is_internal_transfer'] == False)].copy()
+
+    if len(df_review) == 0:
+        st.warning("No transactions to review (all are bank transfers or internal transfers)")
+        if st.button("Continue to Analysis"):
+            st.session_state.stage = 'analysis'
+            st.rerun()
+        return
+
+    # Date range filter at the top
+    st.subheader("📅 Filter by Date Range")
+
+    min_date = df_review['date'].min().date()
+    max_date = df_review['date'].max().date()
+
+    col1, col2, col3 = st.columns([2, 2, 1])
+
+    with col1:
+        start_date = st.date_input(
+            "Start Date",
+            value=min_date,
+            min_value=min_date,
+            max_value=max_date,
+            key='category_review_start_date'
+        )
+
+    with col2:
+        end_date = st.date_input(
+            "End Date",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date,
+            key='category_review_end_date'
+        )
+
+    with col3:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Reset Dates"):
+            st.session_state.category_review_start_date = min_date
+            st.session_state.category_review_end_date = max_date
+            st.rerun()
+
+    # Filter by date range
+    df_filtered = df_review[
+        (df_review['date'].dt.date >= start_date) &
+        (df_review['date'].dt.date <= end_date)
+    ].copy()
+
+    if len(df_filtered) == 0:
+        st.warning("No transactions in selected date range")
+        return
+
+    st.markdown(f"**Showing {len(df_filtered)} transactions**")
+    st.markdown("---")
+
+    # Get unique categories (excluding Uncategorized, put it last)
+    categories = sorted([c for c in df_filtered['category'].unique() if c != 'Uncategorized'])
+    if 'Uncategorized' in df_filtered['category'].unique():
+        categories.append('Uncategorized')
+
+    # Show transactions grouped by category
+    all_edits = {}
+
+    for category in categories:
+        with st.expander(f"📂 {category} ({len(df_filtered[df_filtered['category'] == category])} transactions)", expanded=(category == categories[0])):
+            category_df = df_filtered[df_filtered['category'] == category].copy()
+
+            # Sort by merchant name within category
+            category_df = category_df.sort_values('merchant')
+
+            # Prepare display dataframe
+            display_df = category_df[[
+                'date', 'account', 'merchant', 'raw_description', 'amount', 'category'
+            ]].copy()
+
+            display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
+            display_df['amount'] = display_df['amount'].round(2)
+
+            # Get unique merchants for dropdown
+            all_merchants = sorted(df_review['merchant'].unique())
+
+            # Show editable table
+            edited_df = st.data_editor(
+                display_df,
+                use_container_width=True,
+                num_rows="fixed",
+                column_config={
+                    "date": st.column_config.TextColumn(
+                        "Date",
+                        disabled=True,
+                        width="small"
+                    ),
+                    "account": st.column_config.TextColumn(
+                        "Account",
+                        disabled=True,
+                        width="small"
+                    ),
+                    "merchant": st.column_config.SelectboxColumn(
+                        "Merchant",
+                        help="Edit merchant - type to search",
+                        options=all_merchants,
+                        width="medium",
+                        required=True
+                    ),
+                    "raw_description": st.column_config.TextColumn(
+                        "Raw Description",
+                        disabled=True,
+                        width="large"
+                    ),
+                    "amount": st.column_config.NumberColumn(
+                        "Amount",
+                        disabled=True,
+                        width="small",
+                        format="£%.2f"
+                    ),
+                    "category": st.column_config.SelectboxColumn(
+                        "Category",
+                        help="Edit category - type to search",
+                        options=st.session_state.custom_categories,
+                        width="medium",
+                        required=True
+                    )
+                },
+                hide_index=True,
+                height=min(500, 35 * len(display_df) + 38),
+                key=f'category_review_{category}'
+            )
+
+            # Store edits with original indices
+            edited_df.index = category_df.index
+            all_edits[category] = edited_df
+
+    st.markdown("---")
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        if st.button("✅ Confirm & Continue to Analysis", type="primary"):
+            # Apply all edits back to main dataframe
+            for category, edited_df in all_edits.items():
+                for idx, row in edited_df.iterrows():
+                    df.at[idx, 'merchant'] = row['merchant']
+                    df.at[idx, 'category'] = row['category']
+
+            # Store updated transactions
+            st.session_state.transactions_df = df
+
+            # Move to analysis
+            st.session_state.stage = 'analysis'
+            st.rerun()
+
+
 def show_analysis():
     """Show spending analysis and export options."""
-    st.header("📊 Spending Analysis")
+    st.header("📊 Financial Analysis")
 
     # Get transactions and exclude internal transfers
     df_all = st.session_state.transactions_df
-    df = df_all[df_all['is_internal_transfer'] == False].copy()
+    df_no_transfers = df_all[df_all['is_internal_transfer'] == False].copy()
 
-    # Show summary of excluded internal transfers
+    # Separate expenses from core spending
+    df_expenses = df_no_transfers[df_no_transfers['category'] == 'Expenses'].copy()
+    df_core = df_no_transfers[df_no_transfers['category'] != 'Expenses'].copy()
+
+    # Show summary of excluded transactions
     num_internal = len(df_all[df_all['is_internal_transfer'] == True])
-    if num_internal > 0:
-        st.info(f"ℹ️ Excluded {num_internal} internal transfers between accounts from analysis")
+    num_expenses = len(df_expenses)
+    if num_internal > 0 or num_expenses > 0:
+        exclusions = []
+        if num_internal > 0:
+            exclusions.append(f"{num_internal} internal transfers")
+        if num_expenses > 0:
+            exclusions.append(f"{num_expenses} business expenses (tracked separately)")
+        st.info(f"ℹ️ {' and '.join(exclusions)} excluded from core spending analysis")
 
     # Date filtering
     st.subheader("📅 Date Range Filter")
 
-    min_date = df['date'].min().date()
-    max_date = df['date'].max().date()
+    # Use df_core for date range (or all non-transfers if no core transactions)
+    df_for_dates = df_core if len(df_core) > 0 else df_no_transfers
+    min_date = df_for_dates['date'].min().date()
+    max_date = df_for_dates['date'].max().date()
 
     col1, col2, col3 = st.columns([2, 2, 1])
 
@@ -823,93 +1000,124 @@ def show_analysis():
             st.session_state.end_date_filter = max_date
             st.rerun()
 
-    # Filter dataframe by date range
-    df_filtered = df[
-        (df['date'].dt.date >= start_date) &
-        (df['date'].dt.date <= end_date)
+    # Filter both core and expenses by date range
+    df_core_filtered = df_core[
+        (df_core['date'].dt.date >= start_date) &
+        (df_core['date'].dt.date <= end_date)
     ].copy()
 
-    if df_filtered.empty:
+    df_expenses_filtered = df_expenses[
+        (df_expenses['date'].dt.date >= start_date) &
+        (df_expenses['date'].dt.date <= end_date)
+    ].copy()
+
+    if df_core_filtered.empty and df_expenses_filtered.empty:
         st.warning("No transactions found in the selected date range.")
         return
 
-    # Show number of transactions in filtered range
-    st.caption(f"Showing {len(df_filtered)} transactions from {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}")
+    st.caption(f"📅 Showing period from {start_date.strftime('%d %b %Y')} to {end_date.strftime('%d %b %Y')}")
 
     st.markdown("---")
 
-    # Use filtered dataframe for analysis
-    analyzer = SpendingAnalyzer(df_filtered)
+    # Core spending analysis
+    if not df_core_filtered.empty:
+        analyzer = SpendingAnalyzer(df_core_filtered)
+        summary = analyzer.get_summary_stats()
 
-    # Summary statistics
-    summary = analyzer.get_summary_stats()
+        st.subheader("💰 Core Income & Spending")
+        st.caption("Excludes internal transfers and business expenses")
 
-    st.subheader("💰 Summary")
-    col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4 = st.columns(4)
 
-    with col1:
-        st.metric("Total Inflows", f"£{summary['total_inflows']:,.2f}")
-    with col2:
-        st.metric("Total Outflows", f"£{summary['total_outflows']:,.2f}")
-    with col3:
-        st.metric("Net Cash Flow", f"£{summary['net_cashflow']:,.2f}")
-    with col4:
-        st.metric("Transactions", f"{summary['transaction_count']}")
+        with col1:
+            st.metric("Total Income", f"£{summary['total_inflows']:,.2f}")
+        with col2:
+            st.metric("Total Spending", f"£{summary['total_outflows']:,.2f}")
+        with col3:
+            st.metric("Net Cash Flow", f"£{summary['net_cashflow']:,.2f}")
+        with col4:
+            st.metric("Transactions", f"{summary['transaction_count']}")
 
-    st.caption(f"📅 Period: {summary['date_range'][0]} to {summary['date_range'][1]}")
-    if summary['transfer_count'] > 0:
-        st.caption(f"ℹ️ {summary['transfer_count']} internal transfers excluded from analysis")
+    # Expense tracking
+    if not df_expenses_filtered.empty:
+        st.markdown("---")
+        st.subheader("💼 Business Expenses")
+        st.caption("Expenses that will be/have been reimbursed")
 
-    st.markdown("---")
+        expenses_paid = df_expenses_filtered[df_expenses_filtered['amount'] < 0]['amount'].sum()
+        expenses_reimbursed = df_expenses_filtered[df_expenses_filtered['amount'] > 0]['amount'].sum()
+        net_expenses = expenses_paid + expenses_reimbursed
 
-    # Category analysis
-    st.subheader("📊 Spending by Category")
-    category_df = analyzer.get_category_analysis()
+        col1, col2, col3, col4 = st.columns(4)
 
-    # Format for display
-    display_category_df = category_df.copy()
-    display_category_df['Inflow Total'] = display_category_df['Inflow Total'].apply(lambda x: f"£{x:,.2f}")
-    display_category_df['Outflow Total'] = display_category_df['Outflow Total'].apply(lambda x: f"£{x:,.2f}")
-    display_category_df['Net Amount'] = display_category_df['Net Amount'].apply(lambda x: f"£{x:,.2f}")
+        with col1:
+            st.metric("Expenses Paid Out", f"£{abs(expenses_paid):,.2f}", delta=None, delta_color="normal")
+        with col2:
+            st.metric("Expenses Reimbursed", f"£{expenses_reimbursed:,.2f}", delta=None, delta_color="inverse")
+        with col3:
+            st.metric("Net Unreimbursed", f"£{abs(net_expenses):,.2f}", delta=None, delta_color="off")
+        with col4:
+            st.metric("Expense Transactions", f"{len(df_expenses_filtered)}")
 
-    st.dataframe(display_category_df, use_container_width=True, hide_index=True)
+        if net_expenses < 0:
+            st.warning(f"⚠️ You have £{abs(net_expenses):,.2f} in unreimbursed expenses to claim back")
+        elif net_expenses > 0:
+            st.info(f"ℹ️ You've received £{net_expenses:,.2f} more in reimbursements than expenses paid")
+        else:
+            st.success("✅ All expenses are fully reconciled")
 
-    st.markdown("---")
+    # Detailed analysis sections (only if we have core transactions)
+    if not df_core_filtered.empty:
+        st.markdown("---")
 
-    # Account analysis
-    col1, col2 = st.columns(2)
+        # Category analysis
+        st.subheader("📊 Spending by Category")
+        category_df = analyzer.get_category_analysis()
 
-    with col1:
-        st.subheader("🏦 Spending by Account")
-        account_df = analyzer.get_account_analysis()
+        # Format for display
+        display_category_df = category_df.copy()
+        display_category_df['Inflow Total'] = display_category_df['Inflow Total'].apply(lambda x: f"£{x:,.2f}")
+        display_category_df['Outflow Total'] = display_category_df['Outflow Total'].apply(lambda x: f"£{x:,.2f}")
+        display_category_df['Net Amount'] = display_category_df['Net Amount'].apply(lambda x: f"£{x:,.2f}")
 
-        display_account_df = account_df.copy()
-        display_account_df['Inflows'] = display_account_df['Inflows'].apply(lambda x: f"£{x:,.2f}")
-        display_account_df['Outflows'] = display_account_df['Outflows'].apply(lambda x: f"£{x:,.2f}")
-        display_account_df['Net'] = display_account_df['Net'].apply(lambda x: f"£{x:,.2f}")
+        st.dataframe(display_category_df, use_container_width=True, hide_index=True)
 
-        st.dataframe(display_account_df, use_container_width=True, hide_index=True)
+        st.markdown("---")
 
-    with col2:
-        st.subheader("🏪 Top 10 Merchants by Spending")
-        merchant_df = analyzer.get_merchant_analysis(top_n=10)
+        # Account analysis
+        col1, col2 = st.columns(2)
 
-        display_merchant_df = merchant_df.copy()
-        display_merchant_df['Total Spent'] = display_merchant_df['Total Spent'].apply(lambda x: f"£{x:,.2f}")
+        with col1:
+            st.subheader("🏦 Spending by Account")
+            account_df = analyzer.get_account_analysis()
 
-        st.dataframe(display_merchant_df, use_container_width=True, hide_index=True)
+            display_account_df = account_df.copy()
+            display_account_df['Inflows'] = display_account_df['Inflows'].apply(lambda x: f"£{x:,.2f}")
+            display_account_df['Outflows'] = display_account_df['Outflows'].apply(lambda x: f"£{x:,.2f}")
+            display_account_df['Net'] = display_account_df['Net'].apply(lambda x: f"£{x:,.2f}")
 
-    st.markdown("---")
+            st.dataframe(display_account_df, use_container_width=True, hide_index=True)
 
-    # Monthly trend
-    monthly_df = analyzer.get_monthly_trend()
-    if len(monthly_df) > 1:
-        st.subheader("📈 Monthly Trend")
-        display_monthly_df = monthly_df.copy()
-        display_monthly_df['Inflows'] = display_monthly_df['Inflows'].apply(lambda x: f"£{x:,.2f}")
-        display_monthly_df['Outflows'] = display_monthly_df['Outflows'].apply(lambda x: f"£{x:,.2f}")
-        display_monthly_df['Net'] = display_monthly_df['Net'].apply(lambda x: f"£{x:,.2f}")
-        st.dataframe(display_monthly_df, use_container_width=True, hide_index=True)
+        with col2:
+            st.subheader("🏪 Top 10 Merchants by Spending")
+            merchant_df = analyzer.get_merchant_analysis(top_n=10)
+
+            display_merchant_df = merchant_df.copy()
+            display_merchant_df['Total Spent'] = display_merchant_df['Total Spent'].apply(lambda x: f"£{x:,.2f}")
+
+            st.dataframe(display_merchant_df, use_container_width=True, hide_index=True)
+
+        st.markdown("---")
+
+        # Monthly trend
+        monthly_df = analyzer.get_monthly_trend()
+        if len(monthly_df) > 1:
+            st.subheader("📈 Monthly Trend")
+            display_monthly_df = monthly_df.copy()
+            display_monthly_df['Inflows'] = display_monthly_df['Inflows'].apply(lambda x: f"£{x:,.2f}")
+            display_monthly_df['Outflows'] = display_monthly_df['Outflows'].apply(lambda x: f"£{x:,.2f}")
+            display_monthly_df['Net'] = display_monthly_df['Net'].apply(lambda x: f"£{x:,.2f}")
+            st.dataframe(display_monthly_df, use_container_width=True, hide_index=True)
 
     st.markdown("---")
 

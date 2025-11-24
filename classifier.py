@@ -23,6 +23,7 @@ class TransactionClassifier:
         'Holidays',
         'Fitness',
         'Personal care',
+        'Expenses',
         'General',
         'Transfers',
         'Uncategorized'
@@ -107,6 +108,7 @@ Category guidelines:
 - Holidays: Hotels, flights, travel booking sites, holiday expenses
 - Fitness: Gyms, sports clubs, fitness classes, sports equipment
 - Personal care: Pharmacy, beauty, haircuts, healthcare
+- Expenses: Business expenses that will be reimbursed
 - General: Items that don't fit other categories
 - Transfers: Internal transfers, moving money between accounts
 
