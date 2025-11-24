@@ -486,7 +486,12 @@ def show_merchant_category_mapping():
 
     # AI classification for unmapped merchants
     if len(unmapped_df) > 0 and api_key and api_key.strip():
-        if st.button("🤖 Classify New Merchants with AI"):
+        # Check if we need to run AI classification (only run once)
+        if 'ai_classification_done' not in st.session_state:
+            st.session_state.ai_classification_done = False
+
+        if not st.session_state.ai_classification_done:
+            st.info(f"🤖 Found {len(unmapped_df)} unmapped merchants. Running AI classification...")
             with st.spinner("Classifying with AI..."):
                 try:
                     classifier = TransactionClassifier(api_key, existing_mapping)
@@ -500,11 +505,18 @@ def show_merchant_category_mapping():
                             'category'
                         ] = category
 
-                    st.success("✅ AI classification complete!")
+                    st.session_state.ai_classification_done = True
+                    st.success("✅ AI classification complete! Review and edit below.")
                     st.rerun()
 
                 except Exception as e:
-                    st.warning(f"⚠️ AI classification failed: {str(e)}. Please categorize manually.")
+                    st.warning(f"⚠️ AI classification failed: {str(e)}. Please categorize manually below.")
+                    st.session_state.ai_classification_done = True  # Don't retry automatically
+
+        # Manual re-classify button
+        if st.button("🔄 Re-classify with AI"):
+            st.session_state.ai_classification_done = False
+            st.rerun()
 
     # Category management section
     with st.expander("⚙️ Manage Categories"):
@@ -871,8 +883,8 @@ def show_category_based_review():
             display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
             display_df['amount'] = display_df['amount'].round(2)
 
-            # Get unique merchants for dropdown
-            all_merchants = sorted(df_review['merchant'].unique())
+            # Get unique merchants for dropdown (filter out NaN)
+            all_merchants = sorted([m for m in df_review['merchant'].unique() if pd.notna(m)])
 
             # Show editable table
             edited_df = st.data_editor(
