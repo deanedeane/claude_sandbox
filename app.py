@@ -454,7 +454,8 @@ def show_merchant_category_mapping():
     existing_mapping = st.session_state.existing_category_mapping
 
     # Get unique merchants (exclude bank transfers)
-    unique_merchants = sorted(df[df['is_bank_transfer'] == False]['merchant'].unique())
+    merchant_series = df[df['is_bank_transfer'] == False]['merchant']
+    unique_merchants = sorted([m for m in merchant_series.unique() if pd.notna(m)])
 
     # Build mapping data with raw description examples
     mapping_data = []
