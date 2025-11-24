@@ -103,8 +103,10 @@ def main():
         show_sheet_selection()
     elif st.session_state.stage == 'review_merchant_mapping':
         show_merchant_mapping_review()
-    elif st.session_state.stage == 'review_category_mapping':
-        show_category_mapping_review()
+    elif st.session_state.stage == 'review_merchant_categories':
+        show_merchant_category_mapping()
+    elif st.session_state.stage == 'review_transaction_categories':
+        show_transaction_category_review()
     elif st.session_state.stage == 'analysis':
         show_analysis()
 
@@ -120,16 +122,19 @@ def show_welcome_screen():
         2. *If using Excel:* Select which sheet contains your transaction data (if multiple sheets)
         3. *Optional:* Upload previous mapping files to reuse your categorization rules
         4. **Review merchant deduplication** - standardize merchant names (e.g., "AMAZON.CO.UK" → "Amazon")
-        5. **Review category mapping** - assign categories to each merchant
-        6. **View analysis** - see spending breakdown by category, account, and merchant
-        7. **Filter by date** - analyze spending for specific time periods (e.g., single month)
-        8. **Export mappings** - download mapping files to reuse next time
+        5. **Review merchant category mapping** - assign default categories to each merchant (AI-assisted)
+        6. **Review transaction categories** - edit individual transactions as needed (e.g., mark some Amazon purchases as work expenses)
+        7. **View analysis** - see spending breakdown by category, account, and merchant
+           - Internal transfers between accounts are automatically identified and excluded
+        8. **Filter by date** - analyze spending for specific time periods (e.g., single month)
+        9. **Export mappings** - download mapping files to reuse next time
 
         ### Tips:
         - You can upload files for any subset of accounts (don't need all 5)
         - Both CSV and Excel (XLS/XLSX) files are supported
-        - Merchant deduplication happens first to consolidate variations of the same merchant
-        - Category mapping happens second, using your previous mappings + AI for new merchants
+        - Bank transfers are handled separately from card transactions
+        - Merchant categories provide defaults, but you can override individual transactions
+        - Internal transfers are excluded from spending analysis to avoid double-counting
         - Use the date filter to focus on specific months or periods
         - Save your mapping files at the end to make next month's analysis much faster!
         """)
@@ -360,8 +365,8 @@ def show_merchant_mapping_review():
             )
             st.session_state.transactions_df = df
 
-            # Move to category mapping
-            st.session_state.stage = 'review_category_mapping'
+            # Move to merchant category mapping
+            st.session_state.stage = 'review_merchant_categories'
             st.rerun()
 
 
@@ -432,9 +437,9 @@ Remove phone numbers, location codes, temporary hold indicators, and branch/stor
     return improved_df
 
 
-def show_category_mapping_review():
-    """Show category mapping for review and AI classification."""
-    st.header("📊 Step 2: Review Category Mapping")
+def show_merchant_category_mapping():
+    """Show merchant-level category mapping for defaults."""
+    st.header("📊 Step 2: Map Merchant Categories (Defaults)")
 
     df = st.session_state.transactions_df
     api_key = st.session_state.api_key
@@ -563,27 +568,11 @@ def show_category_mapping_review():
     col1, col2 = st.columns([1, 5])
     with col1:
         if st.button("✅ Confirm & Continue", type="primary"):
-            # Apply category mapping
-            mapping_dict = {}
-            for _, row in final_mapping_df.iterrows():
-                if pd.notna(row['category']) and row['category']:
-                    mapping_dict[row['merchant']] = row['category']
+            # Store merchant category mapping (will be used as defaults for transactions)
+            st.session_state.merchant_category_mapping = final_mapping_df[['merchant', 'category']]
 
-            # Apply to non-bank-transfer transactions
-            for merchant, category in mapping_dict.items():
-                df.loc[(df['merchant'] == merchant) & (df['is_bank_transfer'] == False), 'category'] = category
-
-            # Bank transfers get 'Transfers' category
-            df.loc[df['is_bank_transfer'] == True, 'category'] = 'Transfers'
-
-            # Fill any remaining with 'Uncategorized'
-            df['category'] = df['category'].fillna('Uncategorized')
-
-            # Store final mapping for export
-            st.session_state.category_mapping_df = final_mapping_df[['merchant', 'category']]
-            st.session_state.transactions_df = df
-
-            st.session_state.stage = 'analysis'
+            # Move to transaction-level categorization
+            st.session_state.stage = 'review_transaction_categories'
             st.rerun()
 
 
@@ -620,11 +609,186 @@ def show_category_editor(df, key_suffix):
     return edited_df
 
 
+def show_transaction_category_review():
+    """Show transaction-level category review and editing."""
+    st.header("💳 Step 3: Review Transaction Categories")
+
+    st.info("""
+    Review and edit categories for individual transactions.
+    Merchant categories are applied as defaults, but you can override any transaction
+    (e.g., some Amazon purchases might be work expenses).
+    """)
+
+    df = st.session_state.transactions_df.copy()
+    merchant_categories = st.session_state.merchant_category_mapping
+
+    # Apply merchant categories as defaults to card transactions
+    merchant_cat_dict = {}
+    for _, row in merchant_categories.iterrows():
+        if pd.notna(row['category']) and row['category']:
+            merchant_cat_dict[row['merchant']] = row['category']
+
+    # Apply merchant categories to transactions without categories
+    for idx, row in df.iterrows():
+        if row['is_bank_transfer']:
+            # Bank transfers always get 'Transfers' category
+            df.at[idx, 'category'] = 'Transfers'
+        elif pd.isna(row.get('category')) or row.get('category') == '':
+            # Apply merchant category if available
+            merchant = row['merchant']
+            if merchant in merchant_cat_dict:
+                df.at[idx, 'category'] = merchant_cat_dict[merchant]
+            else:
+                df.at[idx, 'category'] = 'Uncategorized'
+
+    # Split into categorized vs uncategorized (excluding bank transfers from the tables)
+    card_transactions = df[df['is_bank_transfer'] == False].copy()
+
+    categorized = card_transactions[
+        (card_transactions['category'].notna()) &
+        (card_transactions['category'] != '') &
+        (card_transactions['category'] != 'Uncategorized')
+    ].copy()
+
+    uncategorized = card_transactions[
+        (card_transactions['category'].isna()) |
+        (card_transactions['category'] == '') |
+        (card_transactions['category'] == 'Uncategorized')
+    ].copy()
+
+    # Add bank transfer summary
+    num_transfers = len(df[df['is_bank_transfer'] == True])
+    if num_transfers > 0:
+        st.success(f"ℹ️ {num_transfers} bank transfers automatically categorized as 'Transfers' (excluded from editing)")
+
+    # Tabs for categorized vs uncategorized
+    if len(categorized) > 0 and len(uncategorized) > 0:
+        tab1, tab2 = st.tabs([
+            f"✅ Categorized ({len(categorized)})",
+            f"⚠️ Needs Categorization ({len(uncategorized)})"
+        ])
+    else:
+        tab1 = tab2 = None
+
+    # Show categorized transactions
+    edited_categorized = pd.DataFrame()
+    if len(categorized) > 0:
+        if tab1:
+            with tab1:
+                st.info("These transactions have categories. Review and edit individual transactions if needed.")
+                edited_categorized = show_transaction_editor(categorized, "categorized")
+        else:
+            st.info("These transactions have categories. Review and edit individual transactions if needed.")
+            edited_categorized = show_transaction_editor(categorized, "categorized")
+
+    # Show uncategorized transactions
+    edited_uncategorized = pd.DataFrame()
+    if len(uncategorized) > 0:
+        if tab2:
+            with tab2:
+                st.warning("These transactions need categories. Assign them below.")
+                edited_uncategorized = show_transaction_editor(uncategorized, "uncategorized")
+        else:
+            st.warning("These transactions need categories. Assign them below.")
+            edited_uncategorized = show_transaction_editor(uncategorized, "uncategorized")
+
+    st.markdown("---")
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        if st.button("✅ Confirm & Continue", type="primary"):
+            # Merge edited dataframes back
+            if len(edited_categorized) > 0:
+                for idx, row in edited_categorized.iterrows():
+                    df.at[idx, 'category'] = row['category']
+
+            if len(edited_uncategorized) > 0:
+                for idx, row in edited_uncategorized.iterrows():
+                    df.at[idx, 'category'] = row['category']
+
+            # Store updated transactions
+            st.session_state.transactions_df = df
+
+            # Identify internal transfers between accounts
+            parser = TransactionParser()
+            df = parser.identify_internal_transfers(df)
+            st.session_state.transactions_df = df
+
+            # Move to analysis
+            st.session_state.stage = 'analysis'
+            st.rerun()
+
+
+def show_transaction_editor(df, key_suffix):
+    """Show transaction editor with all fields."""
+    # Prepare display columns
+    display_df = df[[
+        'date', 'account', 'merchant', 'raw_description', 'amount', 'category'
+    ]].copy()
+
+    display_df['date'] = display_df['date'].dt.strftime('%Y-%m-%d')
+    display_df['amount'] = display_df['amount'].round(2)
+
+    edited_df = st.data_editor(
+        display_df,
+        use_container_width=True,
+        num_rows="fixed",
+        column_config={
+            "date": st.column_config.TextColumn(
+                "Date",
+                disabled=True,
+                width="small"
+            ),
+            "account": st.column_config.TextColumn(
+                "Account",
+                disabled=True,
+                width="small"
+            ),
+            "merchant": st.column_config.TextColumn(
+                "Merchant",
+                disabled=True,
+                width="medium"
+            ),
+            "raw_description": st.column_config.TextColumn(
+                "Raw Description",
+                disabled=True,
+                width="large"
+            ),
+            "amount": st.column_config.NumberColumn(
+                "Amount",
+                disabled=True,
+                width="small",
+                format="£%.2f"
+            ),
+            "category": st.column_config.SelectboxColumn(
+                "Category",
+                help="Edit category for this transaction",
+                options=st.session_state.custom_categories,
+                width="medium",
+                required=True
+            )
+        },
+        hide_index=True,
+        height=min(500, 35 * len(display_df) + 38),
+        key=f'transaction_editor_{key_suffix}'
+    )
+
+    # Map back to original indices
+    edited_df.index = df.index
+    return edited_df
+
+
 def show_analysis():
     """Show spending analysis and export options."""
     st.header("📊 Spending Analysis")
 
-    df = st.session_state.transactions_df
+    # Get transactions and exclude internal transfers
+    df_all = st.session_state.transactions_df
+    df = df_all[df_all['is_internal_transfer'] == False].copy()
+
+    # Show summary of excluded internal transfers
+    num_internal = len(df_all[df_all['is_internal_transfer'] == True])
+    if num_internal > 0:
+        st.info(f"ℹ️ Excluded {num_internal} internal transfers between accounts from analysis")
 
     # Date filtering
     st.subheader("📅 Date Range Filter")
@@ -775,16 +939,16 @@ def show_analysis():
         )
 
     with col2:
-        # Export category mapping
+        # Export merchant category mapping
         category_csv = TransactionClassifier.export_mapping_to_csv(
-            st.session_state.category_mapping_df
+            st.session_state.merchant_category_mapping
         )
         st.download_button(
             label="📥 Download Category Mapping",
             data=category_csv,
             file_name="category_mapping.csv",
             mime="text/csv",
-            help="Save this to reuse category assignments next time"
+            help="Save merchant → category defaults to reuse next time"
         )
 
     with col3:
