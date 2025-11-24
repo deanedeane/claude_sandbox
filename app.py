@@ -336,37 +336,58 @@ def show_category_mapping_review():
     df = st.session_state.transactions_df
     api_key = st.session_state.api_key
 
-    # Initialize classifier with existing mapping
-    existing_mapping = st.session_state.existing_category_mapping
-    classifier = TransactionClassifier(api_key, existing_mapping)
-
     # Build category mapping dataframe
-    category_mapping_df = classifier.build_mapping_dataframe(df)
+    existing_mapping = st.session_state.existing_category_mapping
+
+    # Get unique merchants
+    unique_merchants = sorted(df['merchant'].unique())
+
+    # Build mapping data
+    mapping_data = []
+    existing_dict = {}
+    if existing_mapping is not None and not existing_mapping.empty:
+        for _, row in existing_mapping.iterrows():
+            existing_dict[row['merchant']] = row['category']
+
+    for merchant in unique_merchants:
+        category = existing_dict.get(merchant, None)
+        mapping_data.append({
+            'merchant': merchant,
+            'category': category if category else ''
+        })
+
+    category_mapping_df = pd.DataFrame(mapping_data)
 
     # Check if we need AI classification
     unclassified = category_mapping_df[
         (category_mapping_df['category'].isna()) | (category_mapping_df['category'] == '')
     ]
 
-    if len(unclassified) > 0 and api_key:
-        st.info(f"🤖 Found {len(unclassified)} merchants without categories. Using AI to classify...")
+    # Only use AI if we have an API key AND there are unclassified merchants
+    if len(unclassified) > 0:
+        if api_key and api_key.strip():  # Check if API key exists and is not empty
+            st.info(f"🤖 Found {len(unclassified)} merchants without categories. Using AI to classify...")
 
-        with st.spinner("Classifying with AI..."):
-            try:
-                merchants_to_classify = unclassified['merchant'].tolist()
-                classifications = classifier.classify_merchants(merchants_to_classify)
+            with st.spinner("Classifying with AI..."):
+                try:
+                    # Initialize classifier only when we need it
+                    classifier = TransactionClassifier(api_key, existing_mapping)
+                    merchants_to_classify = unclassified['merchant'].tolist()
+                    classifications = classifier.classify_merchants(merchants_to_classify)
 
-                # Update mapping with AI classifications
-                for merchant, category in classifications.items():
-                    category_mapping_df.loc[
-                        category_mapping_df['merchant'] == merchant,
-                        'category'
-                    ] = category
+                    # Update mapping with AI classifications
+                    for merchant, category in classifications.items():
+                        category_mapping_df.loc[
+                            category_mapping_df['merchant'] == merchant,
+                            'category'
+                        ] = category
 
-                st.success("✅ AI classification complete!")
+                    st.success("✅ AI classification complete!")
 
-            except Exception as e:
-                st.warning(f"AI classification failed: {str(e)}. Please categorize manually.")
+                except Exception as e:
+                    st.warning(f"⚠️ AI classification failed: {str(e)}. Please categorize manually.")
+        else:
+            st.warning(f"⚠️ Found {len(unclassified)} merchants without categories. Add your OpenAI API key in the sidebar to use AI classification, or categorize manually below.")
 
     # Show editable dataframe
     st.info("Review and edit category assignments below. Changes are saved when you click 'Confirm & Continue'.")
@@ -398,8 +419,19 @@ def show_category_mapping_review():
         if st.button("✅ Confirm & Continue", type="primary"):
             st.session_state.category_mapping_df = edited_category_df
 
-            # Apply category mapping
-            df = classifier.apply_categories(df, edited_category_df)
+            # Apply category mapping manually
+            mapping_dict = {}
+            for _, row in edited_category_df.iterrows():
+                if pd.notna(row['category']) and row['category']:
+                    mapping_dict[row['merchant']] = row['category']
+
+            # Apply mapping to transactions
+            for merchant, category in mapping_dict.items():
+                df.loc[df['merchant'] == merchant, 'category'] = category
+
+            # Fill any remaining with 'Uncategorized'
+            df['category'] = df['category'].fillna('Uncategorized')
+
             st.session_state.transactions_df = df
 
             # Move to analysis
