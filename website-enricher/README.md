@@ -31,35 +31,46 @@ A simple, opinionated web application that enriches a list of company names with
 
 ## Configuration
 
-### Search API Setup
+### Search Engine - SearXNG
 
-The application uses a mock search implementation by default. To use a real search API:
+The application uses **SearXNG**, a free, privacy-respecting metasearch engine that requires **no API keys**!
 
-1. Open `app/api/enrich/route.ts`
-2. Find the `searchCompany` function (around line 50)
-3. Choose one of the provided API examples and uncomment it
-4. Add your API credentials to `.env.local`:
+**Default Instance**: `https://searx.be`
+
+SearXNG aggregates results from multiple search engines (Google, Bing, DuckDuckGo, etc.) while respecting your privacy.
+
+#### Optional: Use a Different SearXNG Instance
+
+If you want to use a different public instance or self-host your own:
+
+1. Create a `.env.local` file in the root directory:
 
 ```env
-# Example for Google Custom Search
-GOOGLE_API_KEY=your_api_key_here
-GOOGLE_CX=your_custom_search_engine_id
-
-# Example for SerpAPI (recommended)
-SERPAPI_KEY=your_serpapi_key_here
-
-# Example for Brave Search
-BRAVE_API_KEY=your_brave_api_key_here
+SEARXNG_INSTANCE=https://search.bus-hit.me
 ```
 
-### Supported Search APIs
+2. Choose from popular public instances:
+   - `https://searx.be` (Belgium, default)
+   - `https://search.bus-hit.me` (Germany)
+   - `https://searx.tiekoetter.com` (Germany)
+   - `https://searx.work` (United States)
+   - `https://search.sapti.me` (France)
 
-The code includes commented examples for:
+Find more instances at: [https://searx.space/](https://searx.space/)
 
-1. **Google Custom Search API** (Paid) - 100 free queries/day, then $5 per 1000 queries
-2. **SerpAPI** (Paid, recommended) - Easy to use, reliable results
-3. **Brave Search API** (Paid) - Privacy-focused alternative
-4. **DuckDuckGo API** (Free, limited) - Very limited functionality
+#### Self-Hosting SearXNG (Optional)
+
+For maximum reliability and control, you can self-host SearXNG:
+
+```bash
+# Using Docker
+docker run -d -p 8080:8080 searxng/searxng
+
+# Then in .env.local:
+SEARXNG_INSTANCE=http://localhost:8080
+```
+
+Full documentation: [https://docs.searxng.org/](https://docs.searxng.org/)
 
 ## Usage
 
@@ -205,20 +216,13 @@ npm run lint
 
 ## Environment Variables
 
-Create a `.env.local` file in the root directory:
+**No environment variables required!** The application works out of the box with SearXNG.
+
+Optional: Create a `.env.local` file to use a different SearXNG instance:
 
 ```env
-# Choose one search API and add its credentials
-
-# Google Custom Search
-GOOGLE_API_KEY=
-GOOGLE_CX=
-
-# SerpAPI (recommended)
-SERPAPI_KEY=
-
-# Brave Search
-BRAVE_API_KEY=
+# Optional: Use a different SearXNG instance (default is https://searx.be)
+SEARXNG_INSTANCE=https://search.bus-hit.me
 ```
 
 ## License
@@ -229,10 +233,11 @@ This is an internal tool for personal use. Use at your own discretion.
 
 ### "No results found" for all companies
 
-- Check that your search API is configured correctly
-- Verify API credentials in `.env.local`
-- Check API quota/rate limits
-- Review the browser console for error messages
+- The default SearXNG instance (searx.be) might be down or rate-limiting
+- Try switching to a different SearXNG instance in `.env.local`
+- Check your internet connection
+- Review the browser console and server logs for error messages
+- Try a different public instance from https://searx.space/
 
 ### CSV upload not working
 

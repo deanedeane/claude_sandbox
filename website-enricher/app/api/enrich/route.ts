@@ -22,113 +22,60 @@ const BLOCKED_DOMAINS = [
 ];
 
 /**
- * Search for a company using a search API
+ * Search for a company using SearXNG
  *
- * IMPORTANT: Replace this function with your actual search API implementation
+ * SearXNG is a free, privacy-respecting metasearch engine that aggregates results
+ * from multiple search engines. No API key required!
  *
- * Example implementations:
+ * Default instance: https://searx.be
+ * You can change this by setting SEARXNG_INSTANCE in .env.local
  *
- * 1. DuckDuckGo Instant Answer API (Limited):
- *    const response = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`);
+ * Find more public instances at: https://searx.space/
  *
- * 2. SerpAPI (Paid, recommended):
- *    const response = await fetch(
- *      `https://serpapi.com/search.json?q=${encodeURIComponent(query)}&api_key=YOUR_API_KEY`
- *    );
- *
- * 3. Google Custom Search API (Paid):
- *    const response = await fetch(
- *      `https://www.googleapis.com/customsearch/v1?key=YOUR_API_KEY&cx=YOUR_CX&q=${encodeURIComponent(query)}`
- *    );
- *
- * 4. Brave Search API (Paid):
- *    const response = await fetch(
- *      `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}`,
- *      { headers: { 'X-Subscription-Token': 'YOUR_API_KEY' } }
- *    );
- *
- * The function should return an array of SearchResult objects with:
+ * The function returns an array of SearchResult objects with:
  * - title: The title of the search result
  * - snippet: A short description or snippet
  * - url: The URL of the result
  */
 async function searchCompany(query: string): Promise<SearchResult[]> {
-  // ============================================================
-  // TODO: REPLACE THIS WITH YOUR ACTUAL SEARCH API IMPLEMENTATION
-  // ============================================================
-
-  // For demonstration, using a mock implementation
-  // In production, uncomment and configure one of the API examples above
-
   console.log(`Searching for: ${query}`);
 
-  // Example: Using Google Custom Search API (you need to enable it and get credentials)
-  /*
-  const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-  const GOOGLE_CX = process.env.GOOGLE_CX;
+  try {
+    // Using SearXNG public instance
+    // You can change this to any SearXNG instance or your own self-hosted one
+    const SEARXNG_INSTANCE = process.env.SEARXNG_INSTANCE || 'https://searx.be';
 
-  if (!GOOGLE_API_KEY || !GOOGLE_CX) {
-    throw new Error('Google API credentials not configured');
+    const searchUrl = new URL(`${SEARXNG_INSTANCE}/search`);
+    searchUrl.searchParams.set('q', query);
+    searchUrl.searchParams.set('format', 'json');
+    searchUrl.searchParams.set('categories', 'general');
+
+    const response = await fetch(searchUrl.toString(), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; CompanyEnricher/1.0)',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`SearXNG error: ${response.status} ${response.statusText}`);
+      return [];
+    }
+
+    const data = await response.json();
+
+    if (!data.results || data.results.length === 0) {
+      return [];
+    }
+
+    return data.results.slice(0, 10).map((item: any) => ({
+      title: item.title || '',
+      snippet: item.content || '',
+      url: item.url || '',
+    }));
+  } catch (error) {
+    console.error('SearXNG search error:', error);
+    return [];
   }
-
-  const response = await fetch(
-    `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${GOOGLE_CX}&q=${encodeURIComponent(query)}&num=10`
-  );
-
-  if (!response.ok) {
-    throw new Error(`Search API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  return (data.items || []).map((item: any) => ({
-    title: item.title,
-    snippet: item.snippet,
-    url: item.link,
-  }));
-  */
-
-  // Example: Using SerpAPI (recommended for production)
-  /*
-  const SERPAPI_KEY = process.env.SERPAPI_KEY;
-
-  if (!SERPAPI_KEY) {
-    throw new Error('SerpAPI key not configured');
-  }
-
-  const response = await fetch(
-    `https://serpapi.com/search.json?q=${encodeURIComponent(query)}&api_key=${SERPAPI_KEY}&num=10`
-  );
-
-  if (!response.ok) {
-    throw new Error(`Search API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  return (data.organic_results || []).map((item: any) => ({
-    title: item.title,
-    snippet: item.snippet,
-    url: item.link,
-  }));
-  */
-
-  // MOCK IMPLEMENTATION - Remove this in production
-  // This simulates search results for testing purposes
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-
-  return [
-    {
-      title: `${query} - Official Website`,
-      snippet: 'Official website of the company',
-      url: `https://example.com/${query.toLowerCase().replace(/\s+/g, '-')}`,
-    },
-    {
-      title: `${query} | LinkedIn`,
-      snippet: 'LinkedIn profile',
-      url: 'https://linkedin.com/company/example',
-    },
-  ];
 }
 
 /**
